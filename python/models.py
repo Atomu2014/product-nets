@@ -88,3 +88,8 @@ class FM:
             var_map[name] = self.run(var)
         pkl.dump(var_map, open(model_path, 'wb'))
         print 'model dumped at', model_path
+
+
+class PNN1:
+    def __init__(self, ):
+        pass

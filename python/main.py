@@ -16,16 +16,17 @@ train_data = utils.read_data(train_file)
 # train_data = utils.shuffle(train_data)
 test_data = utils.read_data(test_file)
 
-min_round = 100
-num_round = 1000
-early_stop_round = 100
-batch_size = -1
 train_size = train_data[0].shape[0]
 test_size = test_data[0].shape[0]
 num_feas = len(name_field)
 
+min_round = 100
+num_round = 1000
+early_stop_round = 100
+batch_size = -1
 
-def train(model, min_round, num_round, early_stop_round):
+
+def train(model):
     history_score = []
     for i in range(num_round):
         fetches = [model.optimizer, model.loss]
