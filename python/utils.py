@@ -7,7 +7,8 @@ from scipy.sparse import coo_matrix
 DTYPE = tf.float32
 
 FIELD_SIZES = [4, 25, 14, 131227, 43, 364, 5, 765, 996, 2, 2, 4, 2, 4, 2, 5]
-INPUT_DIM = 133465
+FIELD_OFFSETS = [sum(FIELD_SIZES[:i]) for i in range(len(FIELD_SIZES))]
+INPUT_DIM = sum(FIELD_SIZES)
 OUTPUT_DIM = 1
 
 NAME_FIELD = {'weekday': 0, 'hour': 1, 'useragent': 2, 'IP': 3, 'region': 4, 'city': 5, 'adexchange': 6, 'domain': 7,
@@ -29,7 +30,7 @@ def read_data(file_name):
             X_i = map(lambda x: int(x.split(':')[0]), fields[1:])
             y.append(y_i)
             X.append(X_i)
-    X = np.array(X)
+    X = np.array(X) - 1
     y = np.reshape(np.array(y), (-1, 1))
     X = libsvm_2_coo(X, (X.shape[0], INPUT_DIM)).tocsr()
     return X, y
@@ -53,21 +54,50 @@ def libsvm_2_coo(libsvm_data, shape):
 
 
 def csr_2_input(csr_mat):
-    coo_mat = csr_mat.tocoo()
-    indices = np.vstack((coo_mat.row, coo_mat.col)).transpose()
-    values = csr_mat.data
-    shape = csr_mat.shape
-    return indices, values, shape
+    if not isinstance(csr_mat, list):
+        coo_mat = csr_mat.tocoo()
+        indices = np.vstack((coo_mat.row, coo_mat.col)).transpose()
+        values = csr_mat.data
+        shape = csr_mat.shape
+        return indices, values, shape
+    else:
+        inputs = []
+        for csr_i in csr_mat:
+            inputs.append(csr_2_input(csr_i))
+        return inputs
 
 
 def slice(csr_data, start=0, size=-1):
-    if size == -1 or start + size >= csr_data[0].shape[0]:
-        slc_data = csr_data[0][start:]
-        slc_labels = csr_data[1][start:]
+    if not isinstance(csr_data[0], list):
+        if size == -1 or start + size >= csr_data[0].shape[0]:
+            slc_data = csr_data[0][start:]
+            slc_labels = csr_data[1][start:]
+        else:
+            slc_data = csr_data[0][start:start + size]
+            slc_labels = csr_data[1][start:start + size]
     else:
-        slc_data = csr_data[0][start:start + size]
-        slc_labels = csr_data[1][start:start + size]
+        if size == -1 or start + size >= csr_data[0].shape[0]:
+            slc_data = []
+            for d_i in csr_data[0]:
+                slc_data.append(d_i[start:])
+            slc_labels = csr_data[1][start:]
+        else:
+            slc_data = []
+            for d_i in csr_data[0]:
+                slc_data.append(d_i[start:start + size])
+            slc_labels = csr_data[1][start:start + size]
     return csr_2_input(slc_data), slc_labels
+
+
+def split_data(data):
+    fields = []
+    for i in range(len(FIELD_OFFSETS) - 1):
+        start_ind = FIELD_OFFSETS[i]
+        end_ind = FIELD_OFFSETS[i + 1]
+        field_i = data[0][:, start_ind:end_ind]
+        fields.append(field_i)
+    fields.append(data[0][:, FIELD_OFFSETS[-1]:])
+    return fields, data[1]
 
 
 def init_var_map(init_actions, init_path=None):

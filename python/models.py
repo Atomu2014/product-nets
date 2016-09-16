@@ -10,9 +10,9 @@ dtype = utils.DTYPE
 class LR:
     def __init__(self, input_dim=None, output_dim=1, init_path=None, opt_algo='gd', learning_rate=1e-2,
                  l2_weight=0, random_seed=None):
-        self.graph = tf.Graph()
         init_actions = [('w', [input_dim, output_dim], 'tnormal', dtype),
                         ('b', [output_dim], 'zero', dtype)]
+        self.graph = tf.Graph()
         with self.graph.as_default():
             if random_seed is not None:
                 tf.set_random_seed(random_seed)
@@ -48,10 +48,10 @@ class LR:
 class FM:
     def __init__(self, input_dim=None, output_dim=1, factor_order=10, init_path=None, opt_algo='gd', learning_rate=1e-2,
                  l2_w=0, l2_v=0, random_seed=None):
-        self.graph = tf.Graph()
         init_actions = [('w', [input_dim, output_dim], 'tnormal', dtype),
                         ('v', [input_dim, factor_order], 'tnormal', dtype),
                         ('b', [output_dim], 'zero', dtype)]
+        self.graph = tf.Graph()
         with self.graph.as_default():
             if random_seed is not None:
                 tf.set_random_seed(random_seed)
@@ -91,5 +91,7 @@ class FM:
 
 
 class PNN1:
-    def __init__(self, ):
-        pass
+    def __init__(self, input_dim=None, output_dim=1, factor_order=10, init_path=None, opt_algo='gd', learning_rate=1e-2,
+                 random_seed=None):
+        init_actions = []
+        self.graph = tf.Graph()

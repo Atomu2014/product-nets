@@ -8,7 +8,6 @@ train_file = '../data/train.fm.txt'
 test_file = '../data/test.fm.txt'
 fm_model_file = '../data/fm.model.txt'
 
-field_sizes = utils.FIELD_SIZES
 input_dim = utils.INPUT_DIM
 name_field = utils.NAME_FIELD
 
@@ -24,6 +23,9 @@ min_round = 1
 num_round = 1000
 early_stop_round = 40
 batch_size = 256
+
+field_sizes = utils.FIELD_SIZES
+field_offsets = utils.FIELD_OFFSETS
 
 
 def train(model):
@@ -49,14 +51,14 @@ def train(model):
         print '[%d]\tloss:%f\ttrain-auc: %f\teval-auc: %f' % (i, np.mean(ls), train_score, test_score)
         history_score.append(test_score)
         if i > min_round and i > early_stop_round:
-            if np.argmax(history_score) == i - early_stop_round or history_score[-1] - history_score[
+            if np.argmax(history_score) == i - early_stop_round and history_score[-1] - history_score[
                         -1 * early_stop_round] < 1e-5:
                 print 'early stop\nbest iteration:\n[%d]\teval-auc: %f' % (
                     np.argmax(history_score), np.max(history_score))
                 break
 
 
-algo = 'fm'
+algo = 'pnn1'
 
 if algo == 'lr':
     lr_params = {
@@ -81,6 +83,12 @@ elif algo == 'fm':
     }
 
     model = FM(**fm_params)
+elif algo == 'pnn1':
+    model = None
+
+if algo in {'pnn1'}:
+    train_data = utils.split_data(train_data)
+    test_data = utils.split_data(test_data)
 
 train(model)
 
