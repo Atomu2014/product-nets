@@ -20,10 +20,10 @@ train_size = train_data[0].shape[0]
 test_size = test_data[0].shape[0]
 num_feas = len(name_field)
 
-min_round = 100
+min_round = 1
 num_round = 1000
-early_stop_round = 100
-batch_size = -1
+early_stop_round = 40
+batch_size = 256
 
 
 def train(model):
@@ -48,9 +48,9 @@ def train(model):
         test_score = roc_auc_score(test_data[1], test_preds)
         print '[%d]\tloss:%f\ttrain-auc: %f\teval-auc: %f' % (i, np.mean(ls), train_score, test_score)
         history_score.append(test_score)
-        if i > min_round:
+        if i > min_round and i > early_stop_round:
             if np.argmax(history_score) == i - early_stop_round or history_score[-1] - history_score[
-                        -1 * early_stop_round] < 1e-3:
+                        -1 * early_stop_round] < 1e-5:
                 print 'early stop\nbest iteration:\n[%d]\teval-auc: %f' % (
                     np.argmax(history_score), np.max(history_score))
                 break
@@ -82,7 +82,7 @@ elif algo == 'fm':
 
     model = FM(**fm_params)
 
-train(model, min_round, num_round, early_stop_round)
+train(model)
 
 # X_i, y_i = utils.slice(train_data, 0, 100)
 # feed_dict = {fm_model.X: X_i, fm_model.y: y_i}
