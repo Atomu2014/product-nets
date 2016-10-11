@@ -76,7 +76,7 @@ def slice(csr_data, start=0, size=-1):
             slc_data = csr_data[0][start:start + size]
             slc_labels = csr_data[1][start:start + size]
     else:
-        if size == -1 or start + size >= csr_data[0].shape[0]:
+        if size == -1 or start + size >= csr_data[0][0].shape[0]:
             slc_data = []
             for d_i in csr_data[0]:
                 slc_data.append(d_i[start:])
@@ -100,12 +100,12 @@ def split_data(data):
     return fields, data[1]
 
 
-def init_var_map(init_actions, init_path=None):
+def init_var_map(init_vars, init_path=None):
     if init_path is not None:
         load_var_map = pkl.load(open(init_path, 'rb'))
         print 'load variable map from', init_path, load_var_map.keys()
     var_map = {}
-    for var_name, var_shape, init_method, dtype in init_actions:
+    for var_name, var_shape, init_method, dtype in init_vars:
         if init_method == 'zero':
             var_map[var_name] = tf.Variable(tf.zeros(var_shape, dtype=dtype), dtype=dtype)
         elif init_method == 'one':
