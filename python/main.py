@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.metrics import roc_auc_score
 
 import utils
-from models import LR, FM, PNN1, PNN2
+from models import LR, FM, PNN1, PNN2, FNN
 
 train_file = '../data/train.fm.txt'
 test_file = '../data/test.fm.txt'
@@ -79,6 +79,18 @@ elif algo == 'fm':
     }
 
     model = FM(**fm_params)
+elif algo == 'fnn':
+    fnn_params = {
+        'layer_sizes': [field_sizes, 10, 1],
+        'layer_acts': [None, None, None],
+        'layer_keeps': [1, 1, 1],
+        'opt_algo': 'gd',
+        'learning_rate': 1,
+        'layer_l2': [0.001, 0.001, 0.001],
+        'random_seed': 0
+    }
+
+    model = FNN(**fnn_params)
 elif algo == 'pnn1':
     pnn1_params = {
         'layer_sizes': [field_sizes, 10, 1],
