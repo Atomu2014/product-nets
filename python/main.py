@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.metrics import roc_auc_score
 
 import utils
-from models import LR, FM, PNN1
+from models import LR, FM, PNN1, PNN2
 
 train_file = '../data/train.fm.txt'
 test_file = '../data/test.fm.txt'
@@ -44,7 +44,6 @@ def train(model):
             ls = [l]
         train_preds = model.run(model.y_prob, utils.slice(train_data)[0])
         test_preds = model.run(model.y_prob, utils.slice(test_data)[0])
-        print train_preds
         train_score = roc_auc_score(train_data[1], train_preds)
         test_score = roc_auc_score(test_data[1], test_preds)
         print '[%d]\tloss:%f\ttrain-auc: %f\teval-auc: %f' % (i, np.mean(ls), train_score, test_score)
@@ -57,7 +56,7 @@ def train(model):
                 break
 
 
-algo = 'pnn1'
+algo = 'pnn2'
 
 if algo == 'lr':
     lr_params = {
@@ -93,8 +92,21 @@ elif algo == 'pnn1':
     }
 
     model = PNN1(**pnn1_params)
+elif algo == 'pnn2':
+    pnn2_params = {
+        'layer_sizes': [field_sizes, 10, 1],
+        'layer_acts': [None, None, None],
+        'layer_keeps': [1, 1, 1],
+        'opt_algo': 'gd',
+        'learning_rate': 1,
+        'layer_l2': [0.001, 0.001, 0.001],
+        'kernel_l2': 0.001,
+        'random_seed': 0
+    }
 
-if algo in {'pnn1'}:
+    model = PNN2(**pnn2_params)
+
+if algo in {'pnn1', 'pnn2'}:
     train_data = utils.split_data(train_data)
     test_data = utils.split_data(test_data)
 
@@ -104,4 +116,4 @@ train(model)
 # fetches = [model.tmp1, model.tmp2]
 # tmp1, tmp2 = model.run(fetches, X_i, y_i)
 # print tmp1.shape
-# print tmp2
+# print tmp2.shape
