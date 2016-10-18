@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.metrics import roc_auc_score
 
 import utils
-from models import LR, FM, PNN1, PNN2, FNN
+from models import LR, FM, PNN1, PNN2, FNN, CCPM
 
 train_file = '../data/train.fm.txt'
 test_file = '../data/test.fm.txt'
@@ -56,7 +56,7 @@ def train(model):
                 break
 
 
-algo = 'pnn2'
+algo = 'ccpm'
 
 if algo == 'lr':
     lr_params = {
@@ -91,6 +91,17 @@ elif algo == 'fnn':
     }
 
     model = FNN(**fnn_params)
+elif algo == 'ccpm':
+    ccpm_params = {
+        'layer_sizes': [field_sizes, 10, 5, 3],
+        'layer_acts': ['relu', 'relu', 'relu'],
+        'layer_keeps': [1, 1, 1],
+        'opt_algo': 'gd',
+        'learning_rate': 1e-2,
+        'random_seed': 0
+    }
+
+    model = CCPM(**ccpm_params)
 elif algo == 'pnn1':
     pnn1_params = {
         'layer_sizes': [field_sizes, 10, 1],
@@ -118,7 +129,7 @@ elif algo == 'pnn2':
 
     model = PNN2(**pnn2_params)
 
-if algo in {'pnn1', 'pnn2'}:
+if algo in {'fnn', 'ccpm', 'pnn1', 'pnn2'}:
     train_data = utils.split_data(train_data)
     test_data = utils.split_data(test_data)
 

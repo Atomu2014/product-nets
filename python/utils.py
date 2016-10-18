@@ -167,3 +167,67 @@ def get_optimizer(opt_algo, learning_rate, loss):
         return tf.train.RMSPropOptimizer(learning_rate).minimize(loss)
     else:
         return tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+
+
+def gather_2d(params, indices):
+    shape = tf.shape(params)
+    flat = tf.reshape(params, [-1])
+    flat_idx = indices[:, 0] * shape[1] + indices[:, 1]
+    flat_idx = tf.reshape(flat_idx, [-1])
+    return tf.gather(flat, flat_idx)
+
+
+def gather_3d(params, indices):
+    shape = tf.shape(params)
+    flat = tf.reshape(params, [-1])
+    flat_idx = indices[:, 0] * shape[1] * shape[2] + indices[:, 1] * shape[2] + indices[:, 2]
+    flat_idx = tf.reshape(flat_idx, [-1])
+    return tf.gather(flat, flat_idx)
+
+
+def gather_4d(params, indices):
+    shape = tf.shape(params)
+    flat = tf.reshape(params, [-1])
+    flat_idx = indices[:, 0] * shape[1] * shape[2] * shape[3] + \
+               indices[:, 1] * shape[2] * shape[3] + indices[:, 2] * shape[3] + indices[:, 3]
+    flat_idx = tf.reshape(flat_idx, [-1])
+    return tf.gather(flat, flat_idx)
+
+
+def max_pool_2d(params, k):
+    _, indices = tf.nn.top_k(params, k, sorted=False)
+    shape = tf.shape(indices)
+    r1 = tf.reshape(tf.range(shape[0]), [-1, 1])
+    r1 = tf.tile(r1, [1, k])
+    r1 = tf.reshape(r1, [-1, 1])
+    indices = tf.concat(1, [r1, tf.reshape(indices, [-1, 1])])
+    return tf.reshape(gather_2d(params, indices), [-1, k])
+
+
+def max_pool_3d(params, k):
+    _, indices = tf.nn.top_k(params, k, sorted=False)
+    shape = tf.shape(indices)
+    r1 = tf.reshape(tf.range(shape[0]), [-1, 1])
+    r2 = tf.reshape(tf.range(shape[1]), [-1, 1])
+    r1 = tf.tile(r1, [1, k * shape[1]])
+    r2 = tf.tile(r2, [1, k])
+    r1 = tf.reshape(r1, [-1, 1])
+    r2 = tf.tile(tf.reshape(r2, [-1, 1]), [shape[0], 1])
+    indices = tf.concat(1, [r1, r2, tf.reshape(indices, [-1, 1])])
+    return tf.reshape(gather_3d(params, indices), [-1, shape[1], k])
+
+
+def max_pool_4d(params, k):
+    _, indices = tf.nn.top_k(params, k, sorted=False)
+    shape = tf.shape(indices)
+    r1 = tf.reshape(tf.range(shape[0]), [-1, 1])
+    r2 = tf.reshape(tf.range(shape[1]), [-1, 1])
+    r3 = tf.reshape(tf.range(shape[2]), [-1, 1])
+    r1 = tf.tile(r1, [1, shape[1] * shape[2] * k])
+    r2 = tf.tile(r2, [1, shape[2] * k])
+    r3 = tf.tile(r3, [1, k])
+    r1 = tf.reshape(r1, [-1, 1])
+    r2 = tf.tile(tf.reshape(r2, [-1, 1]), [shape[0], 1])
+    r3 = tf.tile(tf.reshape(r3, [-1, 1]), [shape[0] * shape[1], 1])
+    indices = tf.concat(1, [r1, r2, r3, tf.reshape(indices, [-1, 1])])
+    return tf.reshape(gather_4d(params, indices), [-1, shape[1], shape[2], k])
