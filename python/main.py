@@ -82,7 +82,7 @@ elif algo == 'fm':
 elif algo == 'fnn':
     fnn_params = {
         'layer_sizes': [field_sizes, 10, 1],
-        'layer_acts': [None, None, None],
+        'layer_acts': ['relu', 'relu', 'relu'],
         'layer_keeps': [1, 1, 1],
         'opt_algo': 'gd',
         'learning_rate': 1,
@@ -105,7 +105,7 @@ elif algo == 'ccpm':
 elif algo == 'pnn1':
     pnn1_params = {
         'layer_sizes': [field_sizes, 10, 1],
-        'layer_acts': [None, None, None],
+        'layer_acts': ['relu', 'relu', 'relu'],
         'layer_keeps': [1, 1, 1],
         'opt_algo': 'gd',
         'learning_rate': 1,
@@ -118,7 +118,7 @@ elif algo == 'pnn1':
 elif algo == 'pnn2':
     pnn2_params = {
         'layer_sizes': [field_sizes, 10, 1],
-        'layer_acts': [None, None, None],
+        'layer_acts': ['relu', 'relu', 'relu'],
         'layer_keeps': [1, 1, 1],
         'opt_algo': 'gd',
         'learning_rate': 1,
