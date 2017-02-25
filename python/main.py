@@ -4,12 +4,11 @@ from sklearn.metrics import roc_auc_score
 import utils
 from models import LR, FM, PNN1, PNN2, FNN, CCPM
 
-train_file = '../data/train.fm.txt'
-test_file = '../data/test.fm.txt'
-fm_model_file = '../data/fm.model.txt'
+train_file = '../data/train.yx.txt'
+test_file = '../data/test.yx.txt'
+# fm_model_file = '../data/fm.model.txt'
 
 input_dim = utils.INPUT_DIM
-name_field = utils.NAME_FIELD
 
 train_data = utils.read_data(train_file)
 # train_data = utils.shuffle(train_data)
@@ -17,7 +16,7 @@ test_data = utils.read_data(test_file)
 
 train_size = train_data[0].shape[0]
 test_size = test_data[0].shape[0]
-num_feas = len(name_field)
+num_feas = len(utils.FIELD_SIZES)
 
 min_round = 1
 num_round = 1000
@@ -56,7 +55,7 @@ def train(model):
                 break
 
 
-algo = 'ccpm'
+algo = 'pnn2'
 
 if algo == 'lr':
     lr_params = {
@@ -71,22 +70,22 @@ if algo == 'lr':
 elif algo == 'fm':
     fm_params = {
         'input_dim': input_dim,
-        'factor_order': 2,
-        'opt_algo': 'adam',
-        'learning_rate': 0.01,
-        'l2_w': 0.01,
-        'l2_v': 0.001,
+        'factor_order': 10,
+        'opt_algo': 'gd',
+        'learning_rate': 0.1,
+        'l2_w': 0,
+        'l2_v': 0,
     }
 
     model = FM(**fm_params)
 elif algo == 'fnn':
     fnn_params = {
-        'layer_sizes': [field_sizes, 10, 1],
-        'layer_acts': ['relu', 'relu', 'relu'],
-        'layer_keeps': [1, 1, 1],
+        'layer_sizes': [field_sizes, 1, 1],
+        'layer_acts': ['tanh', 'none'],
+        'layer_keeps': [1, 1],
         'opt_algo': 'gd',
-        'learning_rate': 1,
-        'layer_l2': [0.001, 0.001, 0.001],
+        'learning_rate': 0.1,
+        'layer_l2': [0, 0],
         'random_seed': 0
     }
 
@@ -94,10 +93,10 @@ elif algo == 'fnn':
 elif algo == 'ccpm':
     ccpm_params = {
         'layer_sizes': [field_sizes, 10, 5, 3],
-        'layer_acts': ['relu', 'relu', 'relu'],
+        'layer_acts': ['tanh', 'tanh', 'none'],
         'layer_keeps': [1, 1, 1],
         'opt_algo': 'gd',
-        'learning_rate': 1e-2,
+        'learning_rate': 0.1,
         'random_seed': 0
     }
 
@@ -105,12 +104,12 @@ elif algo == 'ccpm':
 elif algo == 'pnn1':
     pnn1_params = {
         'layer_sizes': [field_sizes, 10, 1],
-        'layer_acts': ['relu', 'relu', 'relu'],
-        'layer_keeps': [1, 1, 1],
+        'layer_acts': ['tanh', 'none'],
+        'layer_keeps': [1, 1],
         'opt_algo': 'gd',
-        'learning_rate': 1,
-        'layer_l2': [0.001, 0.001, 0.001],
-        'kernel_l2': 0.001,
+        'learning_rate': 0.1,
+        'layer_l2': [0, 0],
+        'kernel_l2': 0,
         'random_seed': 0
     }
 
@@ -118,12 +117,12 @@ elif algo == 'pnn1':
 elif algo == 'pnn2':
     pnn2_params = {
         'layer_sizes': [field_sizes, 10, 1],
-        'layer_acts': ['relu', 'relu', 'relu'],
-        'layer_keeps': [1, 1, 1],
+        'layer_acts': ['tanh', 'none'],
+        'layer_keeps': [1, 1],
         'opt_algo': 'gd',
-        'learning_rate': 1,
-        'layer_l2': [0.001, 0.001, 0.001],
-        'kernel_l2': 0.001,
+        'learning_rate': 0.1,
+        'layer_l2': [0, 0],
+        'kernel_l2': 0,
         'random_seed': 0
     }
 

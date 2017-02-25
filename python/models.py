@@ -26,7 +26,7 @@ class LR:
             self.y_prob = tf.sigmoid(logits)
 
             self.loss = tf.reduce_mean(
-                tf.nn.sigmoid_cross_entropy_with_logits(logits, self.y)) + \
+                tf.nn.sigmoid_cross_entropy_with_logits(labels=self.y, logits=logits)) + \
                         l2_weight * tf.nn.l2_loss(w)
             self.optimizer = utils.get_optimizer(opt_algo, learning_rate, self.loss)
 
@@ -66,7 +66,8 @@ class FM:
             w = self.vars['w']
             v = self.vars['v']
             b = self.vars['b']
-            X_square = tf.SparseTensor(self.X.indices, tf.square(self.X.values), self.X.shape)
+
+            X_square = tf.SparseTensor(self.X.indices, tf.square(self.X.values), tf.to_int64(tf.shape(self.X)))
             p = 0.5 * tf.reshape(
                 tf.reduce_sum(
                     tf.square(tf.sparse_tensor_dense_matmul(self.X, v)) -
@@ -77,7 +78,7 @@ class FM:
             self.y_prob = tf.sigmoid(logits)
 
             self.loss = tf.reduce_mean(
-                tf.nn.sigmoid_cross_entropy_with_logits(logits, self.y)) + \
+                tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=self.y)) + \
                         l2_w * tf.nn.l2_loss(w) + \
                         l2_v * tf.nn.l2_loss(v)
             self.optimizer = utils.get_optimizer(opt_algo, learning_rate, self.loss)
@@ -117,7 +118,7 @@ class FNN:
         for i in range(2, len(layer_sizes) - 1):
             layer_input = layer_sizes[i]
             layer_output = layer_sizes[i + 1]
-            init_vars.append(('w%d' % i, [layer_input, layer_output], 'tnormal',))
+            init_vars.append(('w%d' % i, [layer_input, layer_output], 'tnormal', dtype))
             init_vars.append(('b%d' % i, [layer_output], 'zero', dtype))
         self.graph = tf.Graph()
         with self.graph.as_default():
@@ -130,9 +131,8 @@ class FNN:
             b0 = [self.vars['b0_%d' % i] for i in range(num_inputs)]
             l = tf.nn.dropout(
                 utils.activate(
-                    tf.concat(1, [
-                        tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
-                        for i in range(num_inputs)]),
+                    tf.concat([tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
+                               for i in range(num_inputs)], 1),
                     layer_acts[0]),
                 layer_keeps[0])
 
@@ -148,7 +148,7 @@ class FNN:
             self.y_prob = tf.sigmoid(l)
 
             self.loss = tf.reduce_mean(
-                tf.nn.sigmoid_cross_entropy_with_logits(l, self.y))
+                tf.nn.sigmoid_cross_entropy_with_logits(logits=l, labels=self.y))
             if layer_l2 is not None:
                 for i in range(num_inputs):
                     self.loss += layer_l2[0] * tf.nn.l2_loss(w0[i])
@@ -161,7 +161,7 @@ class FNN:
             config = tf.ConfigProto()
             config.gpu_options.allow_growth = True
             self.sess = tf.Session(config=config)
-            tf.initialize_all_variables().run(session=self.sess)
+            tf.global_variables_initializer().run(session=self.sess)
 
     def run(self, fetches, X=None, y=None):
         feed_dict = {}
@@ -206,9 +206,8 @@ class CCPM:
             b0 = [self.vars['b0_%d' % i] for i in range(num_inputs)]
             l = tf.nn.dropout(
                 utils.activate(
-                    tf.concat(1, [
-                        tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
-                        for i in range(num_inputs)]),
+                    tf.concat([tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
+                               for i in range(num_inputs)], 1),
                     layer_acts[0]),
                 layer_keeps[0])
             l = tf.transpose(tf.reshape(l, [-1, num_inputs, embedding_order, 1]), [0, 2, 1, 3])
@@ -241,7 +240,7 @@ class CCPM:
             self.y_prob = tf.sigmoid(l)
 
             self.loss = tf.reduce_mean(
-                tf.nn.sigmoid_cross_entropy_with_logits(l, self.y))
+                tf.nn.sigmoid_cross_entropy_with_logits(logits=l, labels=self.y))
             self.optimizer = utils.get_optimizer(opt_algo, learning_rate, self.loss)
 
             config = tf.ConfigProto()
@@ -295,9 +294,8 @@ class PNN1:
             b0 = [self.vars['b0_%d' % i] for i in range(num_inputs)]
             l = tf.nn.dropout(
                 utils.activate(
-                    tf.concat(1, [
-                        tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
-                        for i in range(num_inputs)]),
+                    tf.concat([tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
+                        for i in range(num_inputs)], 1),
                     layer_acts[0]),
                 layer_keeps[0])
 
@@ -333,7 +331,7 @@ class PNN1:
             self.y_prob = tf.sigmoid(l)
 
             self.loss = tf.reduce_mean(
-                tf.nn.sigmoid_cross_entropy_with_logits(l, self.y))
+                tf.nn.sigmoid_cross_entropy_with_logits(logits=l, labels=self.y))
             if layer_l2 is not None:
                 for i in range(num_inputs):
                     self.loss += layer_l2[0] * tf.nn.l2_loss(w0[i])
@@ -396,9 +394,8 @@ class PNN2:
             b0 = [self.vars['b0_%d' % i] for i in range(num_inputs)]
             l = tf.nn.dropout(
                 utils.activate(
-                    tf.concat(1, [
-                        tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
-                        for i in range(num_inputs)]),
+                    tf.concat([tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
+                        for i in range(num_inputs)], 1),
                     layer_acts[0]),
                 layer_keeps[0])
             w1 = self.vars['w1']
@@ -428,7 +425,7 @@ class PNN2:
             self.y_prob = tf.sigmoid(l)
 
             self.loss = tf.reduce_mean(
-                tf.nn.sigmoid_cross_entropy_with_logits(l, self.y))
+                tf.nn.sigmoid_cross_entropy_with_logits(logits=l, labels=self.y))
             if layer_l2 is not None:
                 for i in range(num_inputs):
                     self.loss += layer_l2[0] * tf.nn.l2_loss(w0[i])

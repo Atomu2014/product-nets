@@ -4,17 +4,19 @@ import numpy as np
 import tensorflow as tf
 from scipy.sparse import coo_matrix
 
-DTYPE = tf.float32
+DTYPE = tf.float64
 
-FIELD_SIZES = [4, 25, 14, 131227, 43, 364, 5, 765, 996, 2, 2, 4, 2, 4, 2, 5]
+FIELD_SIZES = [0] * 26
+with open('../data/featindex.txt') as fin:
+    for line in fin:
+        line = line.strip().split(':')
+        if len(line) > 1:
+            f = int(line[0]) - 1
+            FIELD_SIZES[f] += 1
+print 'field sizes:', FIELD_SIZES
 FIELD_OFFSETS = [sum(FIELD_SIZES[:i]) for i in range(len(FIELD_SIZES))]
 INPUT_DIM = sum(FIELD_SIZES)
 OUTPUT_DIM = 1
-
-NAME_FIELD = {'weekday': 0, 'hour': 1, 'useragent': 2, 'IP': 3, 'region': 4, 'city': 5, 'adexchange': 6, 'domain': 7,
-              'slotid': 8, 'slotwidth': 9, 'slotheight': 10, 'slotvisibility': 11, 'slotformat': 12, 'creative': 13,
-              'advertiser': 14, 'slotprice': 15}
-
 STDDEV = 1e-3
 MINVAL = -1e-2
 MAXVAL = 1e-2
@@ -30,9 +32,8 @@ def read_data(file_name):
             X_i = map(lambda x: int(x.split(':')[0]), fields[1:])
             y.append(y_i)
             X.append(X_i)
-    X = np.array(X) - 1
     y = np.reshape(np.array(y), (-1, 1))
-    X = libsvm_2_coo(X, (X.shape[0], INPUT_DIM)).tocsr()
+    X = libsvm_2_coo(X, (len(X), INPUT_DIM)).tocsr()
     return X, y
 
 
@@ -45,10 +46,15 @@ def shuffle(data):
 
 
 def libsvm_2_coo(libsvm_data, shape):
-    coo_rows = np.zeros_like(libsvm_data)
-    coo_rows = (coo_rows.transpose() + range(libsvm_data.shape[0])).transpose()
-    coo_rows = coo_rows.flatten()
-    coo_cols = libsvm_data.flatten()
+    coo_rows = []
+    coo_cols = []
+    n = 0
+    for d in libsvm_data:
+        coo_rows.extend([n] * len(d))
+        coo_cols.extend(d)
+        n += 1
+    coo_rows = np.array(coo_rows)
+    coo_cols = np.array(coo_cols)
     coo_data = np.ones_like(coo_rows)
     return coo_matrix((coo_data, (coo_rows, coo_cols)), shape=shape)
 
@@ -200,7 +206,7 @@ def max_pool_2d(params, k):
     r1 = tf.reshape(tf.range(shape[0]), [-1, 1])
     r1 = tf.tile(r1, [1, k])
     r1 = tf.reshape(r1, [-1, 1])
-    indices = tf.concat(1, [r1, tf.reshape(indices, [-1, 1])])
+    indices = tf.concat([r1, tf.reshape(indices, [-1, 1])], 1)
     return tf.reshape(gather_2d(params, indices), [-1, k])
 
 
@@ -213,7 +219,7 @@ def max_pool_3d(params, k):
     r2 = tf.tile(r2, [1, k])
     r1 = tf.reshape(r1, [-1, 1])
     r2 = tf.tile(tf.reshape(r2, [-1, 1]), [shape[0], 1])
-    indices = tf.concat(1, [r1, r2, tf.reshape(indices, [-1, 1])])
+    indices = tf.concat([r1, r2, tf.reshape(indices, [-1, 1])], 1)
     return tf.reshape(gather_3d(params, indices), [-1, shape[1], k])
 
 
@@ -229,5 +235,5 @@ def max_pool_4d(params, k):
     r1 = tf.reshape(r1, [-1, 1])
     r2 = tf.tile(tf.reshape(r2, [-1, 1]), [shape[0], 1])
     r3 = tf.tile(tf.reshape(r3, [-1, 1]), [shape[0] * shape[1], 1])
-    indices = tf.concat(1, [r1, r2, r3, tf.reshape(indices, [-1, 1])])
+    indices = tf.concat([r1, r2, r3, tf.reshape(indices, [-1, 1])], 1)
     return tf.reshape(gather_4d(params, indices), [-1, shape[1], shape[2], k])
