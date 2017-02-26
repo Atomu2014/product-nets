@@ -120,7 +120,7 @@ elif algo == 'pnn2':
         'layer_acts': ['tanh', 'none'],
         'layer_keeps': [1, 1],
         'opt_algo': 'gd',
-        'learning_rate': 0.1,
+        'learning_rate': 0.01,
         'layer_l2': [0, 0],
         'kernel_l2': 0,
         'random_seed': 0

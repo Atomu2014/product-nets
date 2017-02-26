@@ -33,7 +33,7 @@ class LR:
             config = tf.ConfigProto()
             config.gpu_options.allow_growth = True
             self.sess = tf.Session(config=config)
-            tf.initialize_all_variables().run(session=self.sess)
+            tf.global_variables_initializer().run(session=self.sess)
 
     def run(self, fetches, X=None, y=None):
         feed_dict = {self.X: X}
@@ -86,7 +86,7 @@ class FM:
             config = tf.ConfigProto()
             config.gpu_options.allow_growth = True
             self.sess = tf.Session(config=config)
-            tf.initialize_all_variables().run(session=self.sess)
+            tf.global_variables_initializer().run(session=self.sess)
 
     def run(self, fetches, X=None, y=None):
         feed_dict = {self.X: X}
@@ -246,7 +246,7 @@ class CCPM:
             config = tf.ConfigProto()
             config.gpu_options.allow_growth = True
             self.sess = tf.Session(config=config)
-            tf.initialize_all_variables().run(session=self.sess)
+            tf.global_variables_initializer().run(session=self.sess)
 
     def run(self, fetches, X=None, y=None):
         feed_dict = {}
@@ -295,7 +295,7 @@ class PNN1:
             l = tf.nn.dropout(
                 utils.activate(
                     tf.concat([tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
-                        for i in range(num_inputs)], 1),
+                               for i in range(num_inputs)], 1),
                     layer_acts[0]),
                 layer_keeps[0])
 
@@ -346,7 +346,7 @@ class PNN1:
             config = tf.ConfigProto()
             config.gpu_options.allow_growth = True
             self.sess = tf.Session(config=config)
-            tf.initialize_all_variables().run(session=self.sess)
+            tf.global_variables_initializer().run(session=self.sess)
 
     def run(self, fetches, X=None, y=None):
         feed_dict = {}
@@ -395,7 +395,7 @@ class PNN2:
             l = tf.nn.dropout(
                 utils.activate(
                     tf.concat([tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
-                        for i in range(num_inputs)], 1),
+                               for i in range(num_inputs)], 1),
                     layer_acts[0]),
                 layer_keeps[0])
             w1 = self.vars['w1']
@@ -403,9 +403,8 @@ class PNN2:
             b1 = self.vars['b1']
             z = tf.reduce_sum(tf.reshape(l, [-1, num_inputs, factor_order]), 1)
             p = tf.reshape(
-                tf.batch_matmul(
-                    tf.reshape(z, [-1, factor_order, 1]),
-                    tf.reshape(z, [-1, 1, factor_order])),
+                tf.matmul(tf.reshape(z, [-1, factor_order, 1]),
+                          tf.reshape(z, [-1, 1, factor_order])),
                 [-1, factor_order * factor_order])
             l = tf.nn.dropout(
                 utils.activate(
@@ -440,7 +439,7 @@ class PNN2:
             config = tf.ConfigProto()
             config.gpu_options.allow_growth = True
             self.sess = tf.Session(config=config)
-            tf.initialize_all_variables().run(session=self.sess)
+            tf.global_variables_initializer().run(session=self.sess)
 
     def run(self, fetches, X=None, y=None):
         feed_dict = {}
