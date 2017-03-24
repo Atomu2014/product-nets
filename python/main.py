@@ -55,7 +55,7 @@ def train(model):
                 break
 
 
-algo = 'pnn2'
+algo = 'lr'
 
 if algo == 'lr':
     lr_params = {
