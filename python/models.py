@@ -129,10 +129,10 @@ class FNN:
             self.vars = utils.init_var_map(init_vars, init_path)
             w0 = [self.vars['w0_%d' % i] for i in range(num_inputs)]
             b0 = [self.vars['b0_%d' % i] for i in range(num_inputs)]
-            xw = tf.concat([tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
-                            for i in range(num_inputs)], 1)
+            xw = [tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) for i in range(num_inputs)]
+            x = tf.concat([xw[i] + b0[i] for i in range(num_inputs)], 1)
             l = tf.nn.dropout(
-                utils.activate(xw, layer_acts[0]),
+                utils.activate(x, layer_acts[0]),
                 layer_keeps[0])
 
             for i in range(1, len(layer_sizes) - 1):
@@ -150,7 +150,7 @@ class FNN:
                 tf.nn.sigmoid_cross_entropy_with_logits(logits=l, labels=self.y))
             if layer_l2 is not None:
                 # for i in range(num_inputs):
-                self.loss += layer_l2[0] * tf.nn.l2_loss(xw)
+                self.loss += layer_l2[0] * tf.nn.l2_loss(tf.concat(xw, 1))
                 for i in range(1, len(layer_sizes) - 1):
                     wi = self.vars['w%d' % i]
                     # bi = self.vars['b%d' % i]
@@ -291,10 +291,10 @@ class PNN1:
             self.vars = utils.init_var_map(init_vars, init_path)
             w0 = [self.vars['w0_%d' % i] for i in range(num_inputs)]
             b0 = [self.vars['b0_%d' % i] for i in range(num_inputs)]
-            xw = tf.concat([tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
-                            for i in range(num_inputs)], 1)
+            xw = [tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) for i in range(num_inputs)]
+            x = tf.concat([xw[i] + b0[i] for i in range(num_inputs)], 1)
             l = tf.nn.dropout(
-                utils.activate(xw, layer_acts[0]),
+                utils.activate(x, layer_acts[0]),
                 layer_keeps[0])
 
             w1 = self.vars['w1']
@@ -332,7 +332,7 @@ class PNN1:
                 tf.nn.sigmoid_cross_entropy_with_logits(logits=l, labels=self.y))
             if layer_l2 is not None:
                 # for i in range(num_inputs):
-                self.loss += layer_l2[0] * tf.nn.l2_loss(xw)
+                self.loss += layer_l2[0] * tf.nn.l2_loss(tf.concat(xw, 1))
                 for i in range(1, len(layer_sizes) - 1):
                     wi = self.vars['w%d' % i]
                     # bi = self.vars['b%d' % i]
@@ -390,10 +390,10 @@ class PNN2:
             self.vars = utils.init_var_map(init_vars, init_path)
             w0 = [self.vars['w0_%d' % i] for i in range(num_inputs)]
             b0 = [self.vars['b0_%d' % i] for i in range(num_inputs)]
-            xw = tf.concat([tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
-                            for i in range(num_inputs)], 1)
+            xw = [tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) for i in range(num_inputs)]
+            x = tf.concat([xw[i] + b0[i] for i in range(num_inputs)], 1)
             l = tf.nn.dropout(
-                utils.activate(xw, layer_acts[0]),
+                utils.activate(x, layer_acts[0]),
                 layer_keeps[0])
             w1 = self.vars['w1']
             k1 = self.vars['k1']
@@ -424,7 +424,7 @@ class PNN2:
                 tf.nn.sigmoid_cross_entropy_with_logits(logits=l, labels=self.y))
             if layer_l2 is not None:
                 # for i in range(num_inputs):
-                self.loss += layer_l2[0] * tf.nn.l2_loss(xw)
+                self.loss += layer_l2[0] * tf.nn.l2_loss(tf.concat(xw, 1))
                 for i in range(1, len(layer_sizes) - 1):
                     wi = self.vars['w%d' % i]
                     # bi = self.vars['b%d' % i]
