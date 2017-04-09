@@ -149,8 +149,8 @@ class FNN:
             self.loss = tf.reduce_mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(logits=l, labels=self.y))
             if layer_l2 is not None:
-                for i in range(num_inputs):
-                    self.loss += layer_l2[0] * tf.nn.l2_loss(xw)
+                # for i in range(num_inputs):
+                self.loss += layer_l2[0] * tf.nn.l2_loss(xw)
                 for i in range(1, len(layer_sizes) - 1):
                     wi = self.vars['w%d' % i]
                     # bi = self.vars['b%d' % i]
@@ -331,8 +331,8 @@ class PNN1:
             self.loss = tf.reduce_mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(logits=l, labels=self.y))
             if layer_l2 is not None:
-                for i in range(num_inputs):
-                    self.loss += layer_l2[0] * tf.nn.l2_loss(xw)
+                # for i in range(num_inputs):
+                self.loss += layer_l2[0] * tf.nn.l2_loss(xw)
                 for i in range(1, len(layer_sizes) - 1):
                     wi = self.vars['w%d' % i]
                     # bi = self.vars['b%d' % i]
@@ -423,8 +423,8 @@ class PNN2:
             self.loss = tf.reduce_mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(logits=l, labels=self.y))
             if layer_l2 is not None:
-                for i in range(num_inputs):
-                    self.loss += layer_l2[0] * tf.nn.l2_loss(xw)
+                # for i in range(num_inputs):
+                self.loss += layer_l2[0] * tf.nn.l2_loss(xw)
                 for i in range(1, len(layer_sizes) - 1):
                     wi = self.vars['w%d' % i]
                     # bi = self.vars['b%d' % i]
