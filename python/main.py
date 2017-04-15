@@ -11,8 +11,13 @@ test_file = '../data/test.yx.txt'
 input_dim = utils.INPUT_DIM
 
 train_data = utils.read_data(train_file)
-# train_data = utils.shuffle(train_data)
+train_data = utils.shuffle(train_data)
 test_data = utils.read_data(test_file)
+
+if train_data[1].ndim > 1:
+    print 'label must be 1-dim'
+    exit(0)
+print('read finish')
 
 train_size = train_data[0].shape[0]
 test_size = test_data[0].shape[0]
@@ -21,7 +26,7 @@ num_feas = len(utils.FIELD_SIZES)
 min_round = 1
 num_round = 1000
 early_stop_round = 50
-batch_size = 256
+batch_size = 1024
 
 field_sizes = utils.FIELD_SIZES
 field_offsets = utils.FIELD_OFFSETS
@@ -45,17 +50,17 @@ def train(model):
         test_preds = model.run(model.y_prob, utils.slice(test_data)[0])
         train_score = roc_auc_score(train_data[1], train_preds)
         test_score = roc_auc_score(test_data[1], test_preds)
-        print '[%d]\tloss:%f\ttrain-auc: %f\teval-auc: %f' % (i, np.mean(ls), train_score, test_score)
+        print('[%d]\tloss (with l2 norm):%f\ttrain-auc: %f\teval-auc: %f' % (i, np.mean(ls), train_score, test_score))
         history_score.append(test_score)
         if i > min_round and i > early_stop_round:
             if np.argmax(history_score) == i - early_stop_round and history_score[-1] - history_score[
                         -1 * early_stop_round] < 1e-5:
-                print 'early stop\nbest iteration:\n[%d]\teval-auc: %f' % (
-                    np.argmax(history_score), np.max(history_score))
+                print('early stop\nbest iteration:\n[%d]\teval-auc: %f' % (
+                    np.argmax(history_score), np.max(history_score)))
                 break
 
 
-algo = 'lr'
+algo = 'pnn2'
 
 if algo == 'lr':
     lr_params = {
@@ -80,9 +85,9 @@ elif algo == 'fm':
     model = FM(**fm_params)
 elif algo == 'fnn':
     fnn_params = {
-        'layer_sizes': [field_sizes, 1, 1],
+        'layer_sizes': [field_sizes, 10, 1],
         'layer_acts': ['tanh', 'none'],
-        'layer_keeps': [1, 1],
+        'drop_out': [0, 0],
         'opt_algo': 'gd',
         'learning_rate': 0.1,
         'layer_l2': [0, 0],
@@ -94,7 +99,7 @@ elif algo == 'ccpm':
     ccpm_params = {
         'layer_sizes': [field_sizes, 10, 5, 3],
         'layer_acts': ['tanh', 'tanh', 'none'],
-        'layer_keeps': [1, 1, 1],
+        'drop_out': [0, 0, 0],
         'opt_algo': 'gd',
         'learning_rate': 0.1,
         'random_seed': 0
@@ -105,7 +110,7 @@ elif algo == 'pnn1':
     pnn1_params = {
         'layer_sizes': [field_sizes, 10, 1],
         'layer_acts': ['tanh', 'none'],
-        'layer_keeps': [1, 1],
+        'drop_out': [0, 0],
         'opt_algo': 'gd',
         'learning_rate': 0.1,
         'layer_l2': [0, 0],
@@ -118,7 +123,7 @@ elif algo == 'pnn2':
     pnn2_params = {
         'layer_sizes': [field_sizes, 10, 1],
         'layer_acts': ['tanh', 'none'],
-        'layer_keeps': [1, 1],
+        'drop_out': [0, 0],
         'opt_algo': 'gd',
         'learning_rate': 0.01,
         'layer_l2': [0, 0],

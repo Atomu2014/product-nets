@@ -1,5 +1,10 @@
-import cPickle as pkl
+import sys
+if sys.version[0] == '2':
+    import cPickle as pkl
+else:
+    import pickle as pkl
 
+import numpy as np
 import tensorflow as tf
 
 import utils
@@ -7,9 +12,44 @@ import utils
 dtype = utils.DTYPE
 
 
-class LR:
-    def __init__(self, input_dim=None, output_dim=1, init_path=None, opt_algo='gd', learning_rate=1e-2,
-                 l2_weight=0, random_seed=None):
+class Model:
+    def __init__(self):
+        self.sess = None
+        self.X = None
+        self.y = None
+        self.layer_keeps = None
+        self.vars = None
+        self.keep_prob_train = None
+        self.keep_prob_test = None
+
+    def run(self, fetches, X=None, y=None, mode='train'):
+            feed_dict = {}
+            if type(self.X) is list:
+                for i in range(len(X)):
+                    feed_dict[self.X[i]] = X[i]
+            else:
+                feed_dict[self.X] = X
+            if y is not None:
+                feed_dict[self.y] = y
+            if self.layer_keeps is not None:
+                if mode == 'train':
+                    feed_dict[self.layer_keeps] = self.keep_prob_train
+                elif mode == 'test':
+                    feed_dict[self.layer_keeps] = self.keep_prob_test
+            return self.sess.run(fetches, feed_dict)
+
+    def dump(self, model_path):
+        var_map = {}
+        for name, var in self.vars.iteritems():
+            var_map[name] = self.run(var)
+        pkl.dump(var_map, open(model_path, 'wb'))
+        print('model dumped at', model_path)
+
+
+class LR(Model):
+    def __init__(self, input_dim=None, output_dim=1, init_path=None, opt_algo='gd', learning_rate=1e-2, l2_weight=0,
+                 random_seed=None):
+        Model.__init__(self)
         init_vars = [('w', [input_dim, output_dim], 'tnormal', dtype),
                      ('b', [output_dim], 'zero', dtype)]
         self.graph = tf.Graph()
@@ -23,7 +63,7 @@ class LR:
             w = self.vars['w']
             b = self.vars['b']
             xw = tf.sparse_tensor_dense_matmul(self.X, w)
-            logits = xw + b
+            logits = tf.reshape(xw + b, [-1])
             self.y_prob = tf.sigmoid(logits)
 
             self.loss = tf.reduce_mean(
@@ -36,23 +76,11 @@ class LR:
             self.sess = tf.Session(config=config)
             tf.global_variables_initializer().run(session=self.sess)
 
-    def run(self, fetches, X=None, y=None):
-        feed_dict = {self.X: X}
-        if y is not None:
-            feed_dict[self.y] = y
-        return self.sess.run(fetches, feed_dict)
 
-    def dump(self, model_path):
-        var_map = {}
-        for name, var in self.vars.iteritems():
-            var_map[name] = self.run(var)
-        pkl.dump(var_map, open(model_path, 'wb'))
-        print 'model dumped at', model_path
-
-
-class FM:
+class FM(Model):
     def __init__(self, input_dim=None, output_dim=1, factor_order=10, init_path=None, opt_algo='gd', learning_rate=1e-2,
                  l2_w=0, l2_v=0, random_seed=None):
+        Model.__init__(self)
         init_vars = [('w', [input_dim, output_dim], 'tnormal', dtype),
                      ('v', [input_dim, factor_order], 'tnormal', dtype),
                      ('b', [output_dim], 'zero', dtype)]
@@ -74,7 +102,7 @@ class FM:
                 tf.reduce_sum(xv - tf.sparse_tensor_dense_matmul(X_square, tf.square(v)), 1),
                 [-1, output_dim])
             xw = tf.sparse_tensor_dense_matmul(self.X, w)
-            logits = xw + b + p
+            logits = tf.reshape(xw + b + p, [-1])
             self.y_prob = tf.sigmoid(logits)
 
             self.loss = tf.reduce_mean(
@@ -88,23 +116,11 @@ class FM:
             self.sess = tf.Session(config=config)
             tf.global_variables_initializer().run(session=self.sess)
 
-    def run(self, fetches, X=None, y=None):
-        feed_dict = {self.X: X}
-        if y is not None:
-            feed_dict[self.y] = y
-        return self.sess.run(fetches, feed_dict)
 
-    def dump(self, model_path):
-        var_map = {}
-        for name, var in self.vars.iteritems():
-            var_map[name] = self.run(var)
-        pkl.dump(var_map, open(model_path, 'wb'))
-        print 'model dumped at', model_path
-
-
-class FNN:
-    def __init__(self, layer_sizes=None, layer_acts=None, layer_keeps=None, layer_l2=None, init_path=None,
-                 opt_algo='gd', learning_rate=1e-2, random_seed=None):
+class FNN(Model):
+    def __init__(self, layer_sizes=None, layer_acts=None, drop_out=None, layer_l2=None, init_path=None, opt_algo='gd',
+                 learning_rate=1e-2, random_seed=None):
+        Model.__init__(self)
         init_vars = []
         num_inputs = len(layer_sizes[0])
         factor_order = layer_sizes[1]
@@ -126,6 +142,9 @@ class FNN:
                 tf.set_random_seed(random_seed)
             self.X = [tf.sparse_placeholder(dtype) for i in range(num_inputs)]
             self.y = tf.placeholder(dtype)
+            self.keep_prob_train = 1 - np.array(drop_out)
+            self.keep_prob_test = np.ones_like(drop_out)
+            self.layer_keeps = tf.placeholder(dtype)
             self.vars = utils.init_var_map(init_vars, init_path)
             w0 = [self.vars['w0_%d' % i] for i in range(num_inputs)]
             b0 = [self.vars['b0_%d' % i] for i in range(num_inputs)]
@@ -133,7 +152,7 @@ class FNN:
             x = tf.concat([xw[i] + b0[i] for i in range(num_inputs)], 1)
             l = tf.nn.dropout(
                 utils.activate(x, layer_acts[0]),
-                layer_keeps[0])
+                self.layer_keeps[0])
 
             for i in range(1, len(layer_sizes) - 1):
                 wi = self.vars['w%d' % i]
@@ -142,8 +161,9 @@ class FNN:
                     utils.activate(
                         tf.matmul(l, wi) + bi,
                         layer_acts[i]),
-                    layer_keeps[i])
+                    self.layer_keeps[i])
 
+            l = tf.reshape(l, [-1])
             self.y_prob = tf.sigmoid(l)
 
             self.loss = tf.reduce_mean(
@@ -162,25 +182,11 @@ class FNN:
             self.sess = tf.Session(config=config)
             tf.global_variables_initializer().run(session=self.sess)
 
-    def run(self, fetches, X=None, y=None):
-        feed_dict = {}
-        for i in range(len(X)):
-            feed_dict[self.X[i]] = X[i]
-        if y is not None:
-            feed_dict[self.y] = y
-        return self.sess.run(fetches, feed_dict)
 
-    def dump(self, model_path):
-        var_map = {}
-        for name, var in self.vars.iteritems():
-            var_map[name] = self.run(var)
-        pkl.dump(var_map, open(model_path, 'wb'))
-        print 'model dumped at', model_path
-
-
-class CCPM:
-    def __init__(self, layer_sizes=None, layer_acts=None, layer_keeps=None, init_path=None, opt_algo='gd',
+class CCPM(Model):
+    def __init__(self, layer_sizes=None, layer_acts=None, drop_out=None, init_path=None, opt_algo='gd',
                  learning_rate=1e-2, random_seed=None):
+        Model.__init__(self)
         init_vars = []
         num_inputs = len(layer_sizes[0])
         embedding_order = layer_sizes[1]
@@ -200,6 +206,9 @@ class CCPM:
                 tf.set_random_seed(random_seed)
             self.X = [tf.sparse_placeholder(dtype) for i in range(num_inputs)]
             self.y = tf.placeholder(dtype)
+            self.keep_prob_train = 1 - np.array(drop_out)
+            self.keep_prob_test = np.ones_like(drop_out)
+            self.layer_keeps = tf.placeholder(dtype)
             self.vars = utils.init_var_map(init_vars, init_path)
             w0 = [self.vars['w0_%d' % i] for i in range(num_inputs)]
             b0 = [self.vars['b0_%d' % i] for i in range(num_inputs)]
@@ -208,7 +217,7 @@ class CCPM:
                     tf.concat([tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) + b0[i]
                                for i in range(num_inputs)], 1),
                     layer_acts[0]),
-                layer_keeps[0])
+                self.layer_keeps[0])
             l = tf.transpose(tf.reshape(l, [-1, num_inputs, embedding_order, 1]), [0, 2, 1, 3])
             f1 = self.vars['f1']
             l = tf.nn.conv2d(l, f1, [1, 1, 1, 1], 'SAME')
@@ -227,15 +236,16 @@ class CCPM:
                 utils.activate(
                     tf.reshape(l, [-1, embedding_order * 3 * 2]),
                     layer_acts[1]),
-                layer_keeps[1])
+                self.layer_keeps[1])
             w1 = self.vars['w1']
             b1 = self.vars['b1']
             l = tf.nn.dropout(
                 utils.activate(
                     tf.matmul(l, w1) + b1,
                     layer_acts[2]),
-                layer_keeps[2])
+                self.layer_keeps[2])
 
+            l = tf.reshape(l, [-1])
             self.y_prob = tf.sigmoid(l)
 
             self.loss = tf.reduce_mean(
@@ -247,25 +257,11 @@ class CCPM:
             self.sess = tf.Session(config=config)
             tf.global_variables_initializer().run(session=self.sess)
 
-    def run(self, fetches, X=None, y=None):
-        feed_dict = {}
-        for i in range(len(X)):
-            feed_dict[self.X[i]] = X[i]
-        if y is not None:
-            feed_dict[self.y] = y
-        return self.sess.run(fetches, feed_dict)
 
-    def dump(self, model_path):
-        var_map = {}
-        for name, var in self.vars.iteritems():
-            var_map[name] = self.run(var)
-        pkl.dump(var_map, open(model_path, 'wb'))
-        print 'model dumped at', model_path
-
-
-class PNN1:
-    def __init__(self, layer_sizes=None, layer_acts=None, layer_keeps=None, layer_l2=None, kernel_l2=None,
-                 init_path=None, opt_algo='gd', learning_rate=1e-2, random_seed=None):
+class PNN1(Model):
+    def __init__(self, layer_sizes=None, layer_acts=None, drop_out=None, layer_l2=None, kernel_l2=None, init_path=None,
+                 opt_algo='gd', learning_rate=1e-2, random_seed=None):
+        Model.__init__(self)
         init_vars = []
         num_inputs = len(layer_sizes[0])
         factor_order = layer_sizes[1]
@@ -288,6 +284,9 @@ class PNN1:
                 tf.set_random_seed(random_seed)
             self.X = [tf.sparse_placeholder(dtype) for i in range(num_inputs)]
             self.y = tf.placeholder(dtype)
+            self.keep_prob_train = 1 - np.array(drop_out)
+            self.keep_prob_test = np.ones_like(drop_out)
+            self.layer_keeps = tf.placeholder(dtype)
             self.vars = utils.init_var_map(init_vars, init_path)
             w0 = [self.vars['w0_%d' % i] for i in range(num_inputs)]
             b0 = [self.vars['b0_%d' % i] for i in range(num_inputs)]
@@ -295,7 +294,7 @@ class PNN1:
             x = tf.concat([xw[i] + b0[i] for i in range(num_inputs)], 1)
             l = tf.nn.dropout(
                 utils.activate(x, layer_acts[0]),
-                layer_keeps[0])
+                self.layer_keeps[0])
 
             w1 = self.vars['w1']
             k1 = self.vars['k1']
@@ -315,7 +314,7 @@ class PNN1:
                 utils.activate(
                     tf.matmul(l, w1) + b1 + p,
                     layer_acts[1]),
-                layer_keeps[1])
+                self.layer_keeps[1])
 
             for i in range(2, len(layer_sizes) - 1):
                 wi = self.vars['w%d' % i]
@@ -324,8 +323,9 @@ class PNN1:
                     utils.activate(
                         tf.matmul(l, wi) + bi,
                         layer_acts[i]),
-                    layer_keeps[i])
+                    self.layer_keeps[i])
 
+            l = tf.reshape(l, [-1])
             self.y_prob = tf.sigmoid(l)
 
             self.loss = tf.reduce_mean(
@@ -346,25 +346,11 @@ class PNN1:
             self.sess = tf.Session(config=config)
             tf.global_variables_initializer().run(session=self.sess)
 
-    def run(self, fetches, X=None, y=None):
-        feed_dict = {}
-        for i in range(len(X)):
-            feed_dict[self.X[i]] = X[i]
-        if y is not None:
-            feed_dict[self.y] = y
-        return self.sess.run(fetches, feed_dict)
 
-    def dump(self, model_path):
-        var_map = {}
-        for name, var in self.vars.iteritems():
-            var_map[name] = self.run(var)
-        pkl.dump(var_map, open(model_path, 'wb'))
-        print 'model dumped at', model_path
-
-
-class PNN2:
-    def __init__(self, layer_sizes=None, layer_acts=None, layer_keeps=None, layer_l2=None, kernel_l2=None,
-                 init_path=None, opt_algo='gd', learning_rate=1e-2, random_seed=None):
+class PNN2(Model):
+    def __init__(self, layer_sizes=None, layer_acts=None, drop_out=None, layer_l2=None, kernel_l2=None, init_path=None,
+                 opt_algo='gd', learning_rate=1e-2, random_seed=None):
+        Model.__init__(self)
         init_vars = []
         num_inputs = len(layer_sizes[0])
         factor_order = layer_sizes[1]
@@ -387,6 +373,9 @@ class PNN2:
                 tf.set_random_seed(random_seed)
             self.X = [tf.sparse_placeholder(dtype) for i in range(num_inputs)]
             self.y = tf.placeholder(dtype)
+            self.keep_prob_train = 1 - np.array(drop_out)
+            self.keep_prob_test = np.ones_like(drop_out)
+            self.layer_keeps = tf.placeholder(dtype)
             self.vars = utils.init_var_map(init_vars, init_path)
             w0 = [self.vars['w0_%d' % i] for i in range(num_inputs)]
             b0 = [self.vars['b0_%d' % i] for i in range(num_inputs)]
@@ -394,7 +383,7 @@ class PNN2:
             x = tf.concat([xw[i] + b0[i] for i in range(num_inputs)], 1)
             l = tf.nn.dropout(
                 utils.activate(x, layer_acts[0]),
-                layer_keeps[0])
+                self.layer_keeps[0])
             w1 = self.vars['w1']
             k1 = self.vars['k1']
             b1 = self.vars['b1']
@@ -407,7 +396,7 @@ class PNN2:
                 utils.activate(
                     tf.matmul(l, w1) + tf.matmul(p, k1) + b1,
                     layer_acts[1]),
-                layer_keeps[1])
+                self.layer_keeps[1])
 
             for i in range(2, len(layer_sizes) - 1):
                 wi = self.vars['w%d' % i]
@@ -416,8 +405,9 @@ class PNN2:
                     utils.activate(
                         tf.matmul(l, wi) + bi,
                         layer_acts[i]),
-                    layer_keeps[i])
+                    self.layer_keeps[i])
 
+            l = tf.reshape(l, [-1])
             self.y_prob = tf.sigmoid(l)
 
             self.loss = tf.reduce_mean(
@@ -437,18 +427,3 @@ class PNN2:
             config.gpu_options.allow_growth = True
             self.sess = tf.Session(config=config)
             tf.global_variables_initializer().run(session=self.sess)
-
-    def run(self, fetches, X=None, y=None):
-        feed_dict = {}
-        for i in range(len(X)):
-            feed_dict[self.X[i]] = X[i]
-        if y is not None:
-            feed_dict[self.y] = y
-        return self.sess.run(fetches, feed_dict)
-
-    def dump(self, model_path):
-        var_map = {}
-        for name, var in self.vars.iteritems():
-            var_map[name] = self.run(var)
-        pkl.dump(var_map, open(model_path, 'wb'))
-        print 'model dumped at', model_path

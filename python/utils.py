@@ -1,10 +1,14 @@
-import cPickle as pkl
+import sys
+if sys.version[0] == '2':
+    import cPickle as pkl
+else:
+    import pickle as pkl
 
 import numpy as np
 import tensorflow as tf
 from scipy.sparse import coo_matrix
 
-DTYPE = tf.float64
+DTYPE = tf.float32
 
 FIELD_SIZES = [0] * 26
 with open('../data/featindex.txt') as fin:
@@ -13,13 +17,16 @@ with open('../data/featindex.txt') as fin:
         if len(line) > 1:
             f = int(line[0]) - 1
             FIELD_SIZES[f] += 1
-print 'field sizes:', FIELD_SIZES
+print('field sizes:', FIELD_SIZES)
 FIELD_OFFSETS = [sum(FIELD_SIZES[:i]) for i in range(len(FIELD_SIZES))]
 INPUT_DIM = sum(FIELD_SIZES)
+# FIELD_SIZES = [94316, 99781,     6,    23, 34072, 12723]
+# FIELD_OFFSETS = [sum(FIELD_SIZES[:i]) for i in range(6)]
+# INPUT_DIM = sum(FIELD_SIZES)
 OUTPUT_DIM = 1
 STDDEV = 1e-3
-MINVAL = -1e-2
-MAXVAL = 1e-2
+MINVAL = -1e-3
+MAXVAL = 1e-3
 
 
 def read_data(file_name):
@@ -32,9 +39,16 @@ def read_data(file_name):
             X_i = map(lambda x: int(x.split(':')[0]), fields[1:])
             y.append(y_i)
             X.append(X_i)
-    y = np.reshape(np.array(y), (-1, 1))
+    y = np.reshape(np.array(y), [-1])
     X = libsvm_2_coo(X, (len(X), INPUT_DIM)).tocsr()
     return X, y
+
+
+def read_data_tsv(file_name):
+    data = np.loadtxt(file_name, delimiter='\t', dtype=np.float32)
+    X, y = np.int32(data[:, :-1]), data[:, -1]
+    X = libsvm_2_coo(X, (len(X), INPUT_DIM)).tocsr()
+    return X, y/5
 
 
 def shuffle(data):
@@ -109,7 +123,7 @@ def split_data(data):
 def init_var_map(init_vars, init_path=None):
     if init_path is not None:
         load_var_map = pkl.load(open(init_path, 'rb'))
-        print 'load variable map from', init_path, load_var_map.keys()
+        print('load variable map from', init_path, load_var_map.keys())
     var_map = {}
     for var_name, var_shape, init_method, dtype in init_vars:
         if init_method == 'zero':
@@ -131,9 +145,9 @@ def init_var_map(init_vars, init_path=None):
             if load_var_map[init_method].shape == tuple(var_shape):
                 var_map[var_name] = tf.Variable(load_var_map[init_method])
             else:
-                print 'BadParam: init method', init_method, 'shape', var_shape, load_var_map[init_method].shape
+                print('BadParam: init method', init_method, 'shape', var_shape, load_var_map[init_method].shape)
         else:
-            print 'BadParam: init method', init_method
+            print('BadParam: init method', init_method)
     return var_map
 
 
