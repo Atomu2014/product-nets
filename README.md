@@ -135,7 +135,7 @@ Some experiments declare that adam's performance is slightly lower than SGD on s
 even though it converges much faster.
 And small batch size is also recommended (try 1 if possible).
 
-3). Feature Engineering and Data processing
+3) Feature Engineering and Data processing
 
 Usually you need to build an index-map to convert raw data into one-hot representation.
 The features usually follow a long-tail distribution, 
@@ -166,7 +166,7 @@ e.g. you have a multi-value field, which has 5-100 values and the length varies.
 You can set the sum to 1 or magnitude to 1 by applying instance-wise normalization.
 Whitening is not always possible, and normalization is just enough.
 
-4). Activation on Embeddings
+4) Embeddings and Activation
 
 Embedding is a linear operation, adding non-linearity to this makes no sense.
 And recently, our experiments show that activation on embedding vectors will not improve performance,
@@ -182,3 +182,5 @@ It seems like you are using ``w3`` as the embedding dimension followed by a nonl
 The only difference is ``w1 w2``'s rank is different from ``w3``. 
 When ``w1`` ``w2``'s inner dimension is small, their product must not by full-rank.
 But ``w3`` does not have this natural constraint.
+
+Besides, we find ``relu`` performs better than ``tanh``, and ``sigmoid`` has worst convergence when using neural networks.
