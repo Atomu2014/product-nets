@@ -92,3 +92,4 @@ ENV/
 
 log
 .idea
+*.ipynb
