@@ -166,7 +166,17 @@ e.g. you have a multi-value field, which has 5-100 values and the length varies.
 You can set the sum to 1 or magnitude to 1 by applying instance-wise normalization.
 Whitening is not always possible, and normalization is just enough.
 
-4) Embeddings and Activation
+4) Continuous Feature, Discrete Feature, and Multi-value Feature
+
+Different from natural singals and sensor signals, most features in User Response Prediction have discrete values (categorical features). The key difference between continuous and discrete features is, discrete features only have absolute meanings, while continuous features have both absolute and relative meanings. For example, 'male' and 'female' are only different symbols, denoting {'male': 0, 'female': 1} or {'male': 1, 'female': 0} do not change symbols' meanings. However, numbers 1, 2, 3 can not be arbitrarily encoded, i.e. a good representation should preserve the relationships among these numbers.
+
+For discrete values, we usually build a feature map to encode symbols as IDs. And we use a dictionary-long vector to represent this feature, with 1 denoting specific value exists. However, here arises another problem when your data contains continuous and discrete values. For example, you have 'gender' and 'height'. One data example may be {'gender': 'male', 'height': 1.8}, and you may want to encode like this {'gender': [1, 0], 'height': 1.8} <=> [1, 0, 1.8]. The problem is, in some dimensions, '1' is a symbol and denotes existence, however in other dimensions, '1' is a number describing how far it is away from '0'. Even though you can apply data normalization, the gap still exists and we still need to unify these features.
+
+Because discrete features are much more than continuous ones, we suggest discretize those continuous values using bucketing. That is, using some 'levels' to represent continuous numbers. Taking 'gender' as an example, you can set [0, 12] as 'children', [13, 18] as 'teenagers', [19, ~] as 'adults' as so on. Usually we use two principles, equal-length and equal-size. Suppose the data range is [0, 100], you can set thresholds as [20, 40, 60, 80] and this strategy produces equal-length bucketing. Or you find most of the data lie around 50 and form a gaussian distribution, then you can set thresholds as [30, 40, 50, 60, 70] to let every bucket holds same number of data.
+
+Multi-value features are special cases of discrete features. For example, 'recently reviewed items' may have several values, like ['item2', 'item7', 'item11'], or ['item1', 'item4', 'item9', 'item13']. You can simply use multi-hot encoding, but there are several side effects. Suppose one user has reviewed 3 items, and another has reviewed 300 items, matrix-multiplication based operations will add these items up and result in huge imbalance. You may turn to data normalization to tackle this problem. Till now, there is still not a standard representation for multi-value features, and we are still working on it. 
+
+5) Embeddings and Activation
 
 Embedding is a linear operation, adding non-linearity to this makes no sense.
 And recently, our experiments show that activation on embedding vectors will not improve performance,
