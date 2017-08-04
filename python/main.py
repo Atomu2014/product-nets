@@ -1,21 +1,34 @@
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import division
+
+import sys
+if sys.version[0] == '2':
+    import cPickle as pkl
+else:
+    import pickle as pkl
+
 import numpy as np
 from sklearn.metrics import roc_auc_score
 
-import utils
-from models import LR, FM, PNN1, PNN2, FNN, CCPM
+from python import utils
+from python.models import LR, FM, PNN1, PNN2, FNN, CCPM
 
 train_file = '../data/train.yx.txt'
 test_file = '../data/test.yx.txt'
-# fm_model_file = '../data/fm.model.txt'
 
 input_dim = utils.INPUT_DIM
 
-train_data = utils.read_data(train_file)
+# train_data = utils.read_data(train_file)
+train_data = pkl.load(open('../data/train.yx.pkl', 'rb'))
 train_data = utils.shuffle(train_data)
-test_data = utils.read_data(test_file)
+# test_data = utils.read_data(test_file)
+test_data = pkl.load(open('../data/test.yx.pkl', 'rb'))
+# pkl.dump(train_data, open('../data/train.yx.pkl', 'wb'))
+# pkl.dump(test_data, open('../data/test.yx.pkl', 'wb'))
 
 if train_data[1].ndim > 1:
-    print 'label must be 1-dim'
+    print('label must be 1-dim')
     exit(0)
 print('read finish')
 
@@ -38,8 +51,9 @@ def train(model):
         fetches = [model.optimizer, model.loss]
         if batch_size > 0:
             ls = []
-            for j in range(train_size / batch_size + 1):
+            for j in range(int(train_size / batch_size + 1)):
                 X_i, y_i = utils.slice(train_data, j * batch_size, batch_size)
+
                 _, l = model.run(fetches, X_i, y_i)
                 ls.append(l)
         elif batch_size == -1:
@@ -60,13 +74,23 @@ def train(model):
                 break
 
 
-algo = 'pnn2'
+algo = 'fnn'
+
+if algo in {'fnn', 'ccpm', 'pnn1', 'pnn2'}:
+    train_data = utils.split_data(train_data)
+    test_data = utils.split_data(test_data)
+    tmp = []
+    for x in field_sizes:
+        if x > 0:
+            tmp.append(x)
+    field_sizes = tmp
+    print('remove empty fields', field_sizes)
 
 if algo == 'lr':
     lr_params = {
         'input_dim': input_dim,
-        'opt_algo': 'gd',
-        'learning_rate': 0.01,
+        'opt_algo': 'adam',
+        'learning_rate': 0.001,
         'l2_weight': 0,
         'random_seed': 0
     }
@@ -85,8 +109,10 @@ elif algo == 'fm':
     model = FM(**fm_params)
 elif algo == 'fnn':
     fnn_params = {
-        'layer_sizes': [field_sizes, 10, 1],
-        'layer_acts': ['tanh', 'none'],
+        'field_sizes': field_sizes,
+        'embed_size': 10,
+        'layer_sizes': [100, 1],
+        'layer_acts': ['tanh', None],
         'drop_out': [0, 0],
         'opt_algo': 'gd',
         'learning_rate': 0.1,
@@ -133,9 +159,7 @@ elif algo == 'pnn2':
 
     model = PNN2(**pnn2_params)
 
-if algo in {'fnn', 'ccpm', 'pnn1', 'pnn2'}:
-    train_data = utils.split_data(train_data)
-    test_data = utils.split_data(test_data)
+
 
 train(model)
 

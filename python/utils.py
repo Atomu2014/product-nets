@@ -1,3 +1,7 @@
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import division
+
 import sys
 if sys.version[0] == '2':
     import cPickle as pkl
@@ -20,9 +24,6 @@ with open('../data/featindex.txt') as fin:
 print('field sizes:', FIELD_SIZES)
 FIELD_OFFSETS = [sum(FIELD_SIZES[:i]) for i in range(len(FIELD_SIZES))]
 INPUT_DIM = sum(FIELD_SIZES)
-# FIELD_SIZES = [94316, 99781,     6,    23, 34072, 12723]
-# FIELD_OFFSETS = [sum(FIELD_SIZES[:i]) for i in range(6)]
-# INPUT_DIM = sum(FIELD_SIZES)
 OUTPUT_DIM = 1
 STDDEV = 1e-3
 MINVAL = -1e-3
@@ -31,24 +32,20 @@ MAXVAL = 1e-3
 
 def read_data(file_name):
     X = []
+    D = []
     y = []
     with open(file_name) as fin:
         for line in fin:
             fields = line.strip().split()
             y_i = int(fields[0])
-            X_i = map(lambda x: int(x.split(':')[0]), fields[1:])
+            X_i = [int(x.split(':')[0]) for x in fields[1:]]
+            D_i = [int(x.split(':')[1]) for x in fields[1:]]
             y.append(y_i)
             X.append(X_i)
+            D.append(D_i)
     y = np.reshape(np.array(y), [-1])
-    X = libsvm_2_coo(X, (len(X), INPUT_DIM)).tocsr()
+    X = libsvm_2_coo(zip(X, D), (len(X), INPUT_DIM)).tocsr()
     return X, y
-
-
-def read_data_tsv(file_name):
-    data = np.loadtxt(file_name, delimiter='\t', dtype=np.float32)
-    X, y = np.int32(data[:, :-1]), data[:, -1]
-    X = libsvm_2_coo(X, (len(X), INPUT_DIM)).tocsr()
-    return X, y/5
 
 
 def shuffle(data):
@@ -62,14 +59,16 @@ def shuffle(data):
 def libsvm_2_coo(libsvm_data, shape):
     coo_rows = []
     coo_cols = []
+    coo_data = []
     n = 0
-    for d in libsvm_data:
-        coo_rows.extend([n] * len(d))
-        coo_cols.extend(d)
+    for x, d in libsvm_data:
+        coo_rows.extend([n] * len(x))
+        coo_cols.extend(x)
+        coo_data.extend(d)
         n += 1
     coo_rows = np.array(coo_rows)
     coo_cols = np.array(coo_cols)
-    coo_data = np.ones_like(coo_rows)
+    coo_data = np.array(coo_data)
     return coo_matrix((coo_data, (coo_rows, coo_cols)), shape=shape)
 
 
@@ -109,11 +108,13 @@ def slice(csr_data, start=0, size=-1):
     return csr_2_input(slc_data), slc_labels
 
 
-def split_data(data):
+def split_data(data, skip_empty=True):
     fields = []
     for i in range(len(FIELD_OFFSETS) - 1):
         start_ind = FIELD_OFFSETS[i]
         end_ind = FIELD_OFFSETS[i + 1]
+        if skip_empty and start_ind == end_ind:
+            continue
         field_i = data[0][:, start_ind:end_ind]
         fields.append(field_i)
     fields.append(data[0][:, FIELD_OFFSETS[-1]:])
@@ -127,23 +128,28 @@ def init_var_map(init_vars, init_path=None):
     var_map = {}
     for var_name, var_shape, init_method, dtype in init_vars:
         if init_method == 'zero':
-            var_map[var_name] = tf.Variable(tf.zeros(var_shape, dtype=dtype), dtype=dtype)
+            var_map[var_name] = tf.Variable(tf.zeros(var_shape, dtype=dtype), name=var_name, dtype=dtype)
         elif init_method == 'one':
-            var_map[var_name] = tf.Variable(tf.ones(var_shape, dtype=dtype), dtype=dtype)
+            var_map[var_name] = tf.Variable(tf.ones(var_shape, dtype=dtype), name=var_name, dtype=dtype)
         elif init_method == 'normal':
             var_map[var_name] = tf.Variable(tf.random_normal(var_shape, mean=0.0, stddev=STDDEV, dtype=dtype),
-                                            dtype=dtype)
+                                            name=var_name, dtype=dtype)
         elif init_method == 'tnormal':
             var_map[var_name] = tf.Variable(tf.truncated_normal(var_shape, mean=0.0, stddev=STDDEV, dtype=dtype),
-                                            dtype=dtype)
+                                            name=var_name, dtype=dtype)
         elif init_method == 'uniform':
             var_map[var_name] = tf.Variable(tf.random_uniform(var_shape, minval=MINVAL, maxval=MAXVAL, dtype=dtype),
-                                            dtype=dtype)
+                                            name=var_name, dtype=dtype)
+        elif init_method == 'xavier':
+            maxval = np.sqrt(6. / np.sum(var_shape))
+            minval = -maxval
+            var_map[var_name] = tf.Variable(tf.random_uniform(var_shape, minval=minval, maxval=maxval, dtype=dtype),
+                                            name=var_name, dtype=dtype)
         elif isinstance(init_method, int) or isinstance(init_method, float):
-            var_map[var_name] = tf.Variable(tf.ones(var_shape, dtype=dtype) * init_method)
+            var_map[var_name] = tf.Variable(tf.ones(var_shape, dtype=dtype) * init_method, name=var_name, dtype=dtype)
         elif init_method in load_var_map:
             if load_var_map[init_method].shape == tuple(var_shape):
-                var_map[var_name] = tf.Variable(load_var_map[init_method])
+                var_map[var_name] = tf.Variable(load_var_map[init_method], name=var_name, dtype=dtype)
             else:
                 print('BadParam: init method', init_method, 'shape', var_shape, load_var_map[init_method].shape)
         else:
