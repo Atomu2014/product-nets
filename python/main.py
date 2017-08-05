@@ -55,6 +55,7 @@ def train(model):
                 X_i, y_i = utils.slice(train_data, j * batch_size, batch_size)
 
                 _, l = model.run(fetches, X_i, y_i)
+                print(l)
                 ls.append(l)
         elif batch_size == -1:
             X_i, y_i = utils.slice(train_data)
@@ -74,7 +75,7 @@ def train(model):
                 break
 
 
-algo = 'fnn'
+algo = 'ccpm'
 
 if algo in {'fnn', 'ccpm', 'pnn1', 'pnn2'}:
     train_data = utils.split_data(train_data)
@@ -89,8 +90,8 @@ if algo in {'fnn', 'ccpm', 'pnn1', 'pnn2'}:
 if algo == 'lr':
     lr_params = {
         'input_dim': input_dim,
-        'opt_algo': 'adam',
-        'learning_rate': 0.001,
+        'opt_algo': 'gd',
+        'learning_rate': 0.1,
         'l2_weight': 0,
         'random_seed': 0
     }
@@ -123,9 +124,11 @@ elif algo == 'fnn':
     model = FNN(**fnn_params)
 elif algo == 'ccpm':
     ccpm_params = {
-        'layer_sizes': [field_sizes, 10, 5, 3],
-        'layer_acts': ['tanh', 'tanh', 'none'],
-        'drop_out': [0, 0, 0],
+        'field_sizes': field_sizes,
+        'embed_size': 10,
+        'layer_sizes': [5, 3],
+        'layer_acts': ['tanh'],
+        'drop_out': [0],
         'opt_algo': 'gd',
         'learning_rate': 0.1,
         'random_seed': 0
