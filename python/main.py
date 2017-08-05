@@ -11,6 +11,8 @@ else:
 import numpy as np
 from sklearn.metrics import roc_auc_score
 
+import progressbar
+
 from python import utils
 from python.models import LR, FM, PNN1, PNN2, FNN, CCPM
 
@@ -31,6 +33,8 @@ if train_data[1].ndim > 1:
     print('label must be 1-dim')
     exit(0)
 print('read finish')
+print('train data size:', train_data[0].shape)
+print('test data size:', test_data[0].shape)
 
 train_size = train_data[0].shape[0]
 test_size = test_data[0].shape[0]
@@ -51,18 +55,29 @@ def train(model):
         fetches = [model.optimizer, model.loss]
         if batch_size > 0:
             ls = []
-            for j in range(int(train_size / batch_size + 1)):
+            bar = progressbar.ProgressBar()
+            print('[%d]\ttraining...' % i)
+            for j in bar(range(int(train_size / batch_size + 1))):
                 X_i, y_i = utils.slice(train_data, j * batch_size, batch_size)
-
                 _, l = model.run(fetches, X_i, y_i)
-                print(l)
                 ls.append(l)
         elif batch_size == -1:
             X_i, y_i = utils.slice(train_data)
             _, l = model.run(fetches, X_i, y_i)
             ls = [l]
-        train_preds = model.run(model.y_prob, utils.slice(train_data)[0])
-        test_preds = model.run(model.y_prob, utils.slice(test_data)[0])
+        train_preds = []
+        print('[%d]\tevaluating...' % i)
+        bar = progressbar.ProgressBar()
+        for j in bar(range(int(train_size / 10000 + 1))):
+            X_i, _ = utils.slice(train_data, j * 10000, 10000)
+            preds = model.run(model.y_prob, X_i, mode='test')
+            train_preds.extend(preds)
+        test_preds = []
+        bar = progressbar.ProgressBar()
+        for j in bar(range(int(test_size / 10000 + 1))):
+            X_i, _ = utils.slice(test_data, j * 10000, 10000)
+            preds = model.run(model.y_prob, X_i, mode='test')
+            test_preds.extend(preds)
         train_score = roc_auc_score(train_data[1], train_preds)
         test_score = roc_auc_score(test_data[1], test_preds)
         print('[%d]\tloss (with l2 norm):%f\ttrain-auc: %f\teval-auc: %f' % (i, np.mean(ls), train_score, test_score))
@@ -75,7 +90,7 @@ def train(model):
                 break
 
 
-algo = 'ccpm'
+algo = 'pnn1'
 
 if algo in {'fnn', 'ccpm', 'pnn1', 'pnn2'}:
     train_data = utils.split_data(train_data)
@@ -117,6 +132,7 @@ elif algo == 'fnn':
         'drop_out': [0, 0],
         'opt_algo': 'gd',
         'learning_rate': 0.1,
+        'embed_l2': 0,
         'layer_l2': [0, 0],
         'random_seed': 0
     }
@@ -126,7 +142,7 @@ elif algo == 'ccpm':
     ccpm_params = {
         'field_sizes': field_sizes,
         'embed_size': 10,
-        'layer_sizes': [5, 3],
+        'filter_sizes': [5, 3],
         'layer_acts': ['tanh'],
         'drop_out': [0],
         'opt_algo': 'gd',
@@ -137,13 +153,15 @@ elif algo == 'ccpm':
     model = CCPM(**ccpm_params)
 elif algo == 'pnn1':
     pnn1_params = {
-        'layer_sizes': [field_sizes, 10, 1],
-        'layer_acts': ['tanh', 'none'],
+        'field_sizes': field_sizes,
+        'embed_size': 10,
+        'layer_sizes': [100, 1],
+        'layer_acts': ['tanh', None],
         'drop_out': [0, 0],
         'opt_algo': 'gd',
         'learning_rate': 0.1,
+        'embed_l2': 0,
         'layer_l2': [0, 0],
-        'kernel_l2': 0,
         'random_seed': 0
     }
 
