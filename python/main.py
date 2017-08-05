@@ -13,6 +13,11 @@ from sklearn.metrics import roc_auc_score
 
 import progressbar
 
+import os
+p = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if not p in sys.path:
+    sys.path.append(p)
+
 from python import utils
 from python.models import LR, FM, PNN1, PNN2, FNN, CCPM
 

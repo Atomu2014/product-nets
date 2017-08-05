@@ -11,7 +11,7 @@ else:
 import numpy as np
 import tensorflow as tf
 
-from . import utils
+from python import utils
 
 dtype = utils.DTYPE
 
