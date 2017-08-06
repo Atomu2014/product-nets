@@ -26,11 +26,11 @@ test_file = '../data/test.yx.txt'
 
 input_dim = utils.INPUT_DIM
 
-# train_data = utils.read_data(train_file)
-train_data = pkl.load(open('../data/train.yx.pkl', 'rb'))
+train_data = utils.read_data(train_file)
+# train_data = pkl.load(open('../data/train.yx.pkl', 'rb'))
 train_data = utils.shuffle(train_data)
-# test_data = utils.read_data(test_file)
-test_data = pkl.load(open('../data/test.yx.pkl', 'rb'))
+test_data = utils.read_data(test_file)
+# test_data = pkl.load(open('../data/test.yx.pkl', 'rb'))
 # pkl.dump(train_data, open('../data/train.yx.pkl', 'wb'))
 # pkl.dump(test_data, open('../data/test.yx.pkl', 'wb'))
 
@@ -46,12 +46,104 @@ test_size = test_data[0].shape[0]
 num_feas = len(utils.FIELD_SIZES)
 
 min_round = 1
-num_round = 1000
-early_stop_round = 50
+num_round = 200
+early_stop_round = 5
 batch_size = 1024
 
 field_sizes = utils.FIELD_SIZES
 field_offsets = utils.FIELD_OFFSETS
+
+algo = 'pnn2'
+
+if algo in {'fnn', 'ccpm', 'pnn1', 'pnn2'}:
+    train_data = utils.split_data(train_data)
+    test_data = utils.split_data(test_data)
+    tmp = []
+    for x in field_sizes:
+        if x > 0:
+            tmp.append(x)
+    field_sizes = tmp
+    print('remove empty fields', field_sizes)
+
+if algo == 'lr':
+    lr_params = {
+        'input_dim': input_dim,
+        'opt_algo': 'gd',
+        'learning_rate': 0.1,
+        'l2_weight': 0,
+        'random_seed': 0
+    }
+    print(lr_params)
+    model = LR(**lr_params)
+elif algo == 'fm':
+    fm_params = {
+        'input_dim': input_dim,
+        'factor_order': 10,
+        'opt_algo': 'gd',
+        'learning_rate': 0.1,
+        'l2_w': 0,
+        'l2_v': 0,
+    }
+    print(fm_params)
+    model = FM(**fm_params)
+elif algo == 'fnn':
+    fnn_params = {
+        'field_sizes': field_sizes,
+        'embed_size': 10,
+        'layer_sizes': [500, 1],
+        'layer_acts': ['relu', None],
+        'drop_out': [0, 0],
+        'opt_algo': 'gd',
+        'learning_rate': 0.1,
+        'embed_l2': 0,
+        'layer_l2': [0, 0],
+        'random_seed': 0
+    }
+    print(fnn_params)
+    model = FNN(**fnn_params)
+elif algo == 'ccpm':
+    ccpm_params = {
+        'field_sizes': field_sizes,
+        'embed_size': 10,
+        'filter_sizes': [5, 3],
+        'layer_acts': ['relu'],
+        'drop_out': [0],
+        'opt_algo': 'gd',
+        'learning_rate': 0.1,
+        'random_seed': 0
+    }
+    print(ccpm_params)
+    model = CCPM(**ccpm_params)
+elif algo == 'pnn1':
+    pnn1_params = {
+        'field_sizes': field_sizes,
+        'embed_size': 10,
+        'layer_sizes': [500, 1],
+        'layer_acts': ['relu', None],
+        'drop_out': [0, 0],
+        'opt_algo': 'gd',
+        'learning_rate': 0.1,
+        'embed_l2': 0,
+        'layer_l2': [0, 0],
+        'random_seed': 0
+    }
+    print(pnn1_params)
+    model = PNN1(**pnn1_params)
+elif algo == 'pnn2':
+    pnn2_params = {
+        'field_sizes': field_sizes,
+        'embed_size': 10,
+        'layer_sizes': [500, 1],
+        'layer_acts': ['relu', None],
+        'drop_out': [0, 0],
+        'opt_algo': 'gd',
+        'learning_rate': 0.1,
+        'embed_l2': 0,
+        'layer_l2': [0, 0],
+        'random_seed': 0
+    }
+    print(pnn2_params)
+    model = PNN2(**pnn2_params)
 
 
 def train(model):
@@ -94,103 +186,4 @@ def train(model):
                     np.argmax(history_score), np.max(history_score)))
                 break
 
-
-algo = 'pnn1'
-
-if algo in {'fnn', 'ccpm', 'pnn1', 'pnn2'}:
-    train_data = utils.split_data(train_data)
-    test_data = utils.split_data(test_data)
-    tmp = []
-    for x in field_sizes:
-        if x > 0:
-            tmp.append(x)
-    field_sizes = tmp
-    print('remove empty fields', field_sizes)
-
-if algo == 'lr':
-    lr_params = {
-        'input_dim': input_dim,
-        'opt_algo': 'gd',
-        'learning_rate': 0.1,
-        'l2_weight': 0,
-        'random_seed': 0
-    }
-
-    model = LR(**lr_params)
-elif algo == 'fm':
-    fm_params = {
-        'input_dim': input_dim,
-        'factor_order': 10,
-        'opt_algo': 'gd',
-        'learning_rate': 0.1,
-        'l2_w': 0,
-        'l2_v': 0,
-    }
-
-    model = FM(**fm_params)
-elif algo == 'fnn':
-    fnn_params = {
-        'field_sizes': field_sizes,
-        'embed_size': 10,
-        'layer_sizes': [100, 1],
-        'layer_acts': ['tanh', None],
-        'drop_out': [0, 0],
-        'opt_algo': 'gd',
-        'learning_rate': 0.1,
-        'embed_l2': 0,
-        'layer_l2': [0, 0],
-        'random_seed': 0
-    }
-
-    model = FNN(**fnn_params)
-elif algo == 'ccpm':
-    ccpm_params = {
-        'field_sizes': field_sizes,
-        'embed_size': 10,
-        'filter_sizes': [5, 3],
-        'layer_acts': ['tanh'],
-        'drop_out': [0],
-        'opt_algo': 'gd',
-        'learning_rate': 0.1,
-        'random_seed': 0
-    }
-
-    model = CCPM(**ccpm_params)
-elif algo == 'pnn1':
-    pnn1_params = {
-        'field_sizes': field_sizes,
-        'embed_size': 10,
-        'layer_sizes': [100, 1],
-        'layer_acts': ['tanh', None],
-        'drop_out': [0, 0],
-        'opt_algo': 'gd',
-        'learning_rate': 0.1,
-        'embed_l2': 0,
-        'layer_l2': [0, 0],
-        'random_seed': 0
-    }
-
-    model = PNN1(**pnn1_params)
-elif algo == 'pnn2':
-    pnn2_params = {
-        'layer_sizes': [field_sizes, 10, 1],
-        'layer_acts': ['tanh', 'none'],
-        'drop_out': [0, 0],
-        'opt_algo': 'gd',
-        'learning_rate': 0.01,
-        'layer_l2': [0, 0],
-        'kernel_l2': 0,
-        'random_seed': 0
-    }
-
-    model = PNN2(**pnn2_params)
-
-
-
 train(model)
-
-# X_i, y_i = utils.slice(train_data, 0, 100)
-# fetches = [model.tmp1, model.tmp2]
-# tmp1, tmp2 = model.run(fetches, X_i, y_i)
-# print tmp1.shape
-# print tmp2.shape

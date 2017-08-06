@@ -323,25 +323,18 @@ class PNN1(Model):
 
 
 class PNN2(Model):
-    def __init__(self, layer_sizes=None, layer_acts=None, drop_out=None, layer_l2=None, kernel_l2=None, init_path=None,
-                 opt_algo='gd', learning_rate=1e-2, random_seed=None):
+    def __init__(self, field_sizes=None, embed_size=10, layer_sizes=None, layer_acts=None, drop_out=None,
+                 embed_l2=None, layer_l2=None, init_path=None, opt_algo='gd', learning_rate=1e-2, random_seed=None):
         Model.__init__(self)
         init_vars = []
-        num_inputs = len(layer_sizes[0])
-        factor_order = layer_sizes[1]
+        num_inputs = len(field_sizes)
         for i in range(num_inputs):
-            layer_input = layer_sizes[0][i]
-            layer_output = factor_order
-            init_vars.append(('w0_%d' % i, [layer_input, layer_output], 'xavier', dtype))
-            init_vars.append(('b0_%d' % i, [layer_output], 'zero', dtype))
-        init_vars.append(('w1', [num_inputs * factor_order, layer_sizes[2]], 'xavier', dtype))
-        init_vars.append(('k1', [factor_order * factor_order, layer_sizes[2]], 'xavier', dtype))
-        init_vars.append(('b1', [layer_sizes[2]], 'zero', dtype))
-        for i in range(2, len(layer_sizes) - 1):
-            layer_input = layer_sizes[i]
-            layer_output = layer_sizes[i + 1]
-            init_vars.append(('w%d' % i, [layer_input, layer_output], 'xavier',))
-            init_vars.append(('b%d' % i, [layer_output], 'zero', dtype))
+            init_vars.append(('embed_%d' % i, [field_sizes[i], embed_size], 'xavier', dtype))
+        node_in = num_inputs * embed_size + embed_size * embed_size
+        for i in range(len(layer_sizes)):
+            init_vars.append(('w%d' % i, [node_in, layer_sizes[i]], 'xavier', dtype))
+            init_vars.append(('b%d' % i, [layer_sizes[i]], 'zero',  dtype))
+            node_in = layer_sizes[i]
         self.graph = tf.Graph()
         with self.graph.as_default():
             if random_seed is not None:
@@ -352,28 +345,17 @@ class PNN2(Model):
             self.keep_prob_test = np.ones_like(drop_out)
             self.layer_keeps = tf.placeholder(dtype)
             self.vars = utils.init_var_map(init_vars, init_path)
-            w0 = [self.vars['w0_%d' % i] for i in range(num_inputs)]
-            b0 = [self.vars['b0_%d' % i] for i in range(num_inputs)]
-            xw = [tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) for i in range(num_inputs)]
-            x = tf.concat([xw[i] + b0[i] for i in range(num_inputs)], 1)
-            l = tf.nn.dropout(
-                utils.activate(x, layer_acts[0]),
-                self.layer_keeps[0])
-            w1 = self.vars['w1']
-            k1 = self.vars['k1']
-            b1 = self.vars['b1']
-            z = tf.reduce_sum(tf.reshape(l, [-1, num_inputs, factor_order]), 1)
-            p = tf.reshape(
-                tf.matmul(tf.reshape(z, [-1, factor_order, 1]),
-                          tf.reshape(z, [-1, 1, factor_order])),
-                [-1, factor_order * factor_order])
-            l = tf.nn.dropout(
-                utils.activate(
-                    tf.matmul(l, w1) + tf.matmul(p, k1) + b1,
-                    layer_acts[1]),
-                self.layer_keeps[1])
+            w0 = [self.vars['embed_%d' % i] for i in range(num_inputs)]
+            xw = tf.concat([tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) for i in range(num_inputs)], 1)
 
-            for i in range(2, len(layer_sizes) - 1):
+            z = tf.reduce_sum(tf.reshape(xw, [-1, num_inputs, embed_size]), 1)
+            op = tf.reshape(
+                tf.matmul(tf.reshape(z, [-1, embed_size, 1]),
+                          tf.reshape(z, [-1, 1, embed_size])),
+                [-1, embed_size * embed_size])
+
+            l = tf.concat([xw, op], 1)
+            for i in range(len(layer_sizes)):
                 wi = self.vars['w%d' % i]
                 bi = self.vars['b%d' % i]
                 l = tf.nn.dropout(
@@ -382,20 +364,16 @@ class PNN2(Model):
                         layer_acts[i]),
                     self.layer_keeps[i])
 
-            l = tf.reshape(l, [-1])
+            l = tf.squeeze(l)
             self.y_prob = tf.sigmoid(l)
 
             self.loss = tf.reduce_mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(logits=l, labels=self.y))
             if layer_l2 is not None:
-                # for i in range(num_inputs):
-                self.loss += layer_l2[0] * tf.nn.l2_loss(tf.concat(xw, 1))
-                for i in range(1, len(layer_sizes) - 1):
+                self.loss += embed_l2 * tf.nn.l2_loss(xw)
+                for i in range(len(layer_sizes)):
                     wi = self.vars['w%d' % i]
-                    # bi = self.vars['b%d' % i]
                     self.loss += layer_l2[i] * tf.nn.l2_loss(wi)
-            if kernel_l2 is not None:
-                self.loss += kernel_l2 * tf.nn.l2_loss(k1)
             self.optimizer = utils.get_optimizer(opt_algo, learning_rate, self.loss)
 
             config = tf.ConfigProto()
