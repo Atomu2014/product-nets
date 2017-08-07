@@ -249,6 +249,7 @@ class PNN1(Model):
             init_vars.append(('embed_%d' % i, [field_sizes[i], embed_size], 'xavier', dtype))
         num_pairs = int(num_inputs * (num_inputs - 1) / 2)
         node_in = num_inputs * embed_size + num_pairs
+        # node_in = num_inputs * (embed_size + num_inputs)
         for i in range(len(layer_sizes)):
             init_vars.append(('w%d' % i, [node_in, layer_sizes[i]], 'xavier', dtype))
             init_vars.append(('b%d' % i, [layer_sizes[i]], 'zero', dtype))
@@ -293,6 +294,14 @@ class PNN1(Model):
             q = tf.reshape(q, [-1, num_pairs, embed_size])
             ip = tf.reshape(tf.reduce_sum(p * q, [-1]), [-1, num_pairs])
 
+            # simple but redundant
+            # batch * n * 1 * k, batch * 1 * n * k
+            # ip = tf.reshape(
+            #     tf.reduce_sum(
+            #         tf.expand_dims(xw3d, 2) *
+            #         tf.expand_dims(xw3d, 1),
+            #         3),
+            #     [-1, num_inputs**2])
             l = tf.concat([xw, ip], 1)
 
             for i in range(len(layer_sizes)):
@@ -324,7 +333,8 @@ class PNN1(Model):
 
 class PNN2(Model):
     def __init__(self, field_sizes=None, embed_size=10, layer_sizes=None, layer_acts=None, drop_out=None,
-                 embed_l2=None, layer_l2=None, init_path=None, opt_algo='gd', learning_rate=1e-2, random_seed=None):
+                 embed_l2=None, layer_l2=None, init_path=None, opt_algo='gd', learning_rate=1e-2, random_seed=None,
+                 layer_norm=True):
         Model.__init__(self)
         init_vars = []
         num_inputs = len(field_sizes)
@@ -353,6 +363,18 @@ class PNN2(Model):
                 tf.matmul(tf.reshape(z, [-1, embed_size, 1]),
                           tf.reshape(z, [-1, 1, embed_size])),
                 [-1, embed_size * embed_size])
+
+            if layer_norm:
+                x_mean, x_var = tf.nn.moments(xw, [1], keep_dims=True)
+                xw = (xw - x_mean) / tf.sqrt(x_var)
+                x_g = tf.Variable(tf.ones([num_inputs * embed_size]), name='x_g')
+                x_b = tf.Variable(tf.zeros([num_inputs * embed_size]), name='x_b')
+                xw = xw * x_g + x_b
+                p_mean, p_var = tf.nn.moments(op, [1], keep_dims=True)
+                op = (op - p_mean) / tf.sqrt(p_var)
+                p_g = tf.Variable(tf.ones([embed_size**2]), name='p_g')
+                p_b = tf.Variable(tf.zeros([embed_size**2]), name='p_b')
+                op = op * p_g + p_b
 
             l = tf.concat([xw, op], 1)
             for i in range(len(layer_sizes)):
