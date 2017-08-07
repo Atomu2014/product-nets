@@ -26,11 +26,11 @@ test_file = '../data/test.yx.txt'
 
 input_dim = utils.INPUT_DIM
 
-train_data = utils.read_data(train_file)
-# train_data = pkl.load(open('../data/train.yx.pkl', 'rb'))
+# train_data = utils.read_data(train_file)
+train_data = pkl.load(open('../data/train.yx.pkl', 'rb'))
 train_data = utils.shuffle(train_data)
-test_data = utils.read_data(test_file)
-# test_data = pkl.load(open('../data/test.yx.pkl', 'rb'))
+# test_data = utils.read_data(test_file)
+test_data = pkl.load(open('../data/test.yx.pkl', 'rb'))
 # pkl.dump(train_data, open('../data/train.yx.pkl', 'wb'))
 # pkl.dump(test_data, open('../data/test.yx.pkl', 'wb'))
 
@@ -53,7 +53,7 @@ batch_size = 1024
 field_sizes = utils.FIELD_SIZES
 field_offsets = utils.FIELD_OFFSETS
 
-algo = 'pnn2'
+algo = 'pnn1'
 
 if algo in {'fnn', 'ccpm', 'pnn1', 'pnn2'}:
     train_data = utils.split_data(train_data)
@@ -137,10 +137,11 @@ elif algo == 'pnn2':
         'layer_acts': ['relu', None],
         'drop_out': [0, 0],
         'opt_algo': 'gd',
-        'learning_rate': 0.1,
-        'embed_l2': 0,
-        'layer_l2': [0, 0],
-        'random_seed': 0
+        'learning_rate': 0.01,
+        'embed_l2': 0.,
+        'layer_l2': [0., 0.],
+        'random_seed': 0,
+        'layer_norm': True,
     }
     print(pnn2_params)
     model = PNN2(**pnn2_params)

@@ -365,15 +365,17 @@ class PNN2(Model):
                 [-1, embed_size * embed_size])
 
             if layer_norm:
-                x_mean, x_var = tf.nn.moments(xw, [1], keep_dims=True)
-                xw = (xw - x_mean) / tf.sqrt(x_var)
-                x_g = tf.Variable(tf.ones([num_inputs * embed_size]), name='x_g')
-                x_b = tf.Variable(tf.zeros([num_inputs * embed_size]), name='x_b')
-                xw = xw * x_g + x_b
+                # x_mean, x_var = tf.nn.moments(xw, [1], keep_dims=True)
+                # xw = (xw - x_mean) / tf.sqrt(x_var)
+                # x_g = tf.Variable(tf.ones([num_inputs * embed_size]), name='x_g')
+                # x_b = tf.Variable(tf.zeros([num_inputs * embed_size]), name='x_b')
+                # x_g = tf.Print(x_g, [x_g[:10], x_b])
+                # xw = xw * x_g + x_b
                 p_mean, p_var = tf.nn.moments(op, [1], keep_dims=True)
                 op = (op - p_mean) / tf.sqrt(p_var)
                 p_g = tf.Variable(tf.ones([embed_size**2]), name='p_g')
                 p_b = tf.Variable(tf.zeros([embed_size**2]), name='p_b')
+                # p_g = tf.Print(p_g, [p_g[:10], p_b])
                 op = op * p_g + p_b
 
             l = tf.concat([xw, op], 1)
