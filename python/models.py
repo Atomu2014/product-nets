@@ -394,7 +394,7 @@ class PNN2(Model):
             self.loss = tf.reduce_mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(logits=l, labels=self.y))
             if layer_l2 is not None:
-                self.loss += embed_l2 * tf.nn.l2_loss(xw)
+                self.loss += embed_l2 * tf.nn.l2_loss(tf.concat(w0, 0))
                 for i in range(len(layer_sizes)):
                     wi = self.vars['w%d' % i]
                     self.loss += layer_l2[i] * tf.nn.l2_loss(wi)
