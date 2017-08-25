@@ -340,7 +340,9 @@ class PNN2(Model):
         num_inputs = len(field_sizes)
         for i in range(num_inputs):
             init_vars.append(('embed_%d' % i, [field_sizes[i], embed_size], 'xavier', dtype))
-        node_in = num_inputs * embed_size + embed_size * embed_size
+        num_pairs = int(num_inputs * (num_inputs - 1) / 2)
+        node_in = num_inputs * embed_size + num_pairs
+        init_vars.append(('kernel', [embed_size, num_pairs, embed_size], 'xavier', dtype))
         for i in range(len(layer_sizes)):
             init_vars.append(('w%d' % i, [node_in, layer_sizes[i]], 'xavier', dtype))
             init_vars.append(('b%d' % i, [layer_sizes[i]], 'zero',  dtype))
@@ -357,28 +359,71 @@ class PNN2(Model):
             self.vars = utils.init_var_map(init_vars, init_path)
             w0 = [self.vars['embed_%d' % i] for i in range(num_inputs)]
             xw = tf.concat([tf.sparse_tensor_dense_matmul(self.X[i], w0[i]) for i in range(num_inputs)], 1)
+            xw3d = tf.reshape(xw, [-1, num_inputs, embed_size])
 
-            z = tf.reduce_sum(tf.reshape(xw, [-1, num_inputs, embed_size]), 1)
-            op = tf.reshape(
-                tf.matmul(tf.reshape(z, [-1, embed_size, 1]),
-                          tf.reshape(z, [-1, 1, embed_size])),
-                [-1, embed_size * embed_size])
+            row = []
+            col = []
+            for i in range(num_inputs - 1):
+                for j in range(i + 1, num_inputs):
+                    row.append(i)
+                    col.append(j)
+            # batch * pair * k
+            p = tf.transpose(
+                # pair * batch * k
+                tf.gather(
+                    # num * batch * k
+                    tf.transpose(
+                        xw3d, [1, 0, 2]),
+                    row),
+                [1, 0, 2])
+            # batch * pair * k
+            q = tf.transpose(
+                tf.gather(
+                    tf.transpose(
+                        xw3d, [1, 0, 2]),
+                    col),
+                [1, 0, 2])
+            # b * p * k
+            p = tf.reshape(p, [-1, num_pairs, embed_size])
+            # b * p * k
+            q = tf.reshape(q, [-1, num_pairs, embed_size])
+            # k * p * k
+            k = self.vars['kernel']
 
-            if layer_norm:
-                # x_mean, x_var = tf.nn.moments(xw, [1], keep_dims=True)
-                # xw = (xw - x_mean) / tf.sqrt(x_var)
-                # x_g = tf.Variable(tf.ones([num_inputs * embed_size]), name='x_g')
-                # x_b = tf.Variable(tf.zeros([num_inputs * embed_size]), name='x_b')
-                # x_g = tf.Print(x_g, [x_g[:10], x_b])
-                # xw = xw * x_g + x_b
-                p_mean, p_var = tf.nn.moments(op, [1], keep_dims=True)
-                op = (op - p_mean) / tf.sqrt(p_var)
-                p_g = tf.Variable(tf.ones([embed_size**2]), name='p_g')
-                p_b = tf.Variable(tf.zeros([embed_size**2]), name='p_b')
-                # p_g = tf.Print(p_g, [p_g[:10], p_b])
-                op = op * p_g + p_b
+            # batch * 1 * pair * k
+            p = tf.expand_dims(p, 1)
+            # batch * pair
+            kp = tf.reduce_sum(
+                # batch * pair * k
+                tf.multiply(
+                    # batch * pair * k
+                    tf.transpose(
+                        # batch * k * pair
+                        tf.reduce_sum(
+                            # batch * k * pair * k
+                            tf.multiply(
+                                p, k),
+                            -1),
+                        [0, 2, 1]),
+                    q),
+                -1)
 
-            l = tf.concat([xw, op], 1)
+            #
+            # if layer_norm:
+            #     # x_mean, x_var = tf.nn.moments(xw, [1], keep_dims=True)
+            #     # xw = (xw - x_mean) / tf.sqrt(x_var)
+            #     # x_g = tf.Variable(tf.ones([num_inputs * embed_size]), name='x_g')
+            #     # x_b = tf.Variable(tf.zeros([num_inputs * embed_size]), name='x_b')
+            #     # x_g = tf.Print(x_g, [x_g[:10], x_b])
+            #     # xw = xw * x_g + x_b
+            #     p_mean, p_var = tf.nn.moments(op, [1], keep_dims=True)
+            #     op = (op - p_mean) / tf.sqrt(p_var)
+            #     p_g = tf.Variable(tf.ones([embed_size**2]), name='p_g')
+            #     p_b = tf.Variable(tf.zeros([embed_size**2]), name='p_b')
+            #     # p_g = tf.Print(p_g, [p_g[:10], p_b])
+            #     op = op * p_g + p_b
+
+            l = tf.concat([xw, kp], 1)
             for i in range(len(layer_sizes)):
                 wi = self.vars['w%d' % i]
                 bi = self.vars['b%d' % i]
@@ -394,7 +439,7 @@ class PNN2(Model):
             self.loss = tf.reduce_mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(logits=l, labels=self.y))
             if layer_l2 is not None:
-                self.loss += embed_l2 * tf.nn.l2_loss(tf.concat(w0, 0))
+                self.loss += embed_l2 * tf.nn.l2_loss(xw)#tf.concat(w0, 0))
                 for i in range(len(layer_sizes)):
                     wi = self.vars['w%d' % i]
                     self.loss += layer_l2[i] * tf.nn.l2_loss(wi)

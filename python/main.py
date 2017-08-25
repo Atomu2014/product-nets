@@ -138,7 +138,7 @@ elif algo == 'pnn2':
         'drop_out': [0, 0],
         'opt_algo': 'gd',
         'learning_rate': 0.1,
-        'embed_l2': 0.001,
+        'embed_l2': 0,
         'layer_l2': [0., 0.],
         'random_seed': 0,
         'layer_norm': True,
