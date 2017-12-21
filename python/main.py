@@ -21,8 +21,8 @@ if not p in sys.path:
 from python import utils
 from python.models import LR, FM, PNN1, PNN2, FNN, CCPM
 
-train_file = '../data/train.yx.txt'
-test_file = '../data/test.yx.txt'
+train_file = '../data/train.txt'
+test_file = '../data/test.txt'
 
 input_dim = utils.INPUT_DIM
 
