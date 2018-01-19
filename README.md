@@ -1,6 +1,6 @@
 # Product-based Neural Networks for User Response Prediction
 
-``Note``: Any problems, you can contact me at kevinqu@apex.sjtu.edu.cn. Through email, you will get my rapid response.
+``Note``: Any problems, you can contact me at kevinqu@apex.sjtu.edu.cn, or kevinqu16@gmail.com. Through email, you will get my rapid response.
 
 This repository contains the demo code of the paper 
 [Product-based Neural Network for User Response Prediction](https://arxiv.org/abs/1611.00144) 
