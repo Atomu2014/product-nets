@@ -19,7 +19,7 @@ if not p in sys.path:
     sys.path.append(p)
 
 from python import utils
-from python.models import LR, FM, PNN1, PNN2, FNN, CCPM
+from python.models import LR, FM, PNN1, PNN2, FNN, CCPM, DeepFM
 
 train_file = '../data/train.txt'
 test_file = '../data/test.txt'
@@ -55,7 +55,7 @@ field_offsets = utils.FIELD_OFFSETS
 
 algo = 'pnn2'
 
-if algo in {'fnn', 'ccpm', 'pnn1', 'pnn2'}:
+if algo in {'fnn', 'ccpm', 'pnn1', 'pnn2', 'deepfm'}:
     train_data = utils.split_data(train_data)
     test_data = utils.split_data(test_data)
     tmp = []
@@ -101,6 +101,21 @@ elif algo == 'fnn':
     }
     print(fnn_params)
     model = FNN(**fnn_params)
+elif algo == 'deepfm':
+    deepfm_params = {
+        'field_sizes': field_sizes,
+        'embed_size': 10,
+        'layer_sizes': [500, 1],
+        'layer_acts': ['relu', None],
+        'drop_out': [0, 0],
+        'opt_algo': 'gd',
+        'learning_rate': 0.1,
+        'embed_l2': 0,
+        'layer_l2': [0, 0],
+        'random_seed': 0
+    }
+    print(deepfm_params)
+    model = DeepFM(**deepfm_params)
 elif algo == 'ccpm':
     ccpm_params = {
         'field_sizes': field_sizes,
