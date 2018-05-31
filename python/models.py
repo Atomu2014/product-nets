@@ -221,9 +221,9 @@ class DeepFM(Model):
 
             xv = tf.reshape(xv, [-1, num_inputs, embed_size])
             p = 0.5 * tf.reduce_sum(
-                tf.square(tf.reduce_sum(xv, 2)) -
-                tf.reduce_sum(tf.square(xv), 2)
-            )
+                tf.square(tf.reduce_sum(xv, 1)) -
+                tf.reduce_sum(tf.square(xv), 1),
+            1)
             xw = tf.reduce_sum(xw, 1)
             logits = tf.reshape(l + xw + b + p, [-1])
 
