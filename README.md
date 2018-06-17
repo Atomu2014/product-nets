@@ -2,14 +2,14 @@
 
 ``Note``: Any problems, you can contact me at kevinqu@apex.sjtu.edu.cn, or kevinqu16@gmail.com. Through email, you will get my rapid response.
 
-This repository contains the demo code of the paper 
+This repository maintains the demo code of the paper 
 [Product-based Neural Network for User Response Prediction](https://arxiv.org/abs/1611.00144) 
 and other baseline models, implemented with ``tensorflow``. 
 And this paper has been published on ICDM2016.
 
 ## Introduction to User Response Prediction
 
-User response prediction takes fundamental and crucial role in today's business. 
+User response prediction takes a fundamental and crucial role in today's business, especially personalized recommender system and online display advertising. 
 Different from traditional machine learning tasks, 
 user response prediction always has ``categorical features`` grouped by different ``fields``, 
 which we call ``multi-field categorical data``, e.g.: 
@@ -25,44 +25,34 @@ which we call ``multi-field categorical data``, e.g.:
 
 In practice, these categorical features are usually one-hot encoded for training. 
 However, this representation results in sparsity.
+Challenged by data sparsity, linear models (e.g., ``LR``), latent factor-based models (e.g., ``FM``, ``FFM``), tree models (e.g., ``GBDT``), and DNN models (e.g., ``FNN``, ``DeepFM``) are proposed.
 
-Traditional methods include:``Logistic Regression``, ``Matrix Factorization`` are easy to train and deploy;
-``GBDT`` can learn very high level patterns, etc.
-However, these models highly rely on feature engineering, 
-e.g. manually extract cross features. How to learn categorical features directly is still unsolved. 
+A core problem in user response prediction is how to represent the complex feature interactions. Industrial applications prefer feature engineering and simple models. With GPU servers becoming more and more popular, it is promising to design complex models to explore feature interactions automatically. Through our analysis and experiments, we find a ``coupled gradient`` issue of latent factor-based models, and an ``insensitive gradient`` issue of DNN models.
 
-Thus we turn to deep learning for an end-to-end, high capacity model 
-to learn good representations of multi-field categorical features, 
-capture local/global dependencies, and further improve prediction.
+Take FM as an example, the gradient of each feature vector is the sum over other feature vectors. Suppose two features are independent, FM can hardly learn two orthogonal feature vectors. The gradient issue of DNNs is discussed in the paper ``Failures of Gradient-based Deep Learning``. 
 
-[deep-ctr](https://github.com/wnzhang/deep-ctr) is an attempt to utilize deep learning in user response prediction, 
-which proposes an latent factor mechanism (called embedding) to deal with multi-field categorical data. 
-Related works include using CNN and RNN for CTR prediction (more details refer to ``Related Works`` in paper).
+<!--Another interesting fact in recommendation or ctr contests is that, winning solutions usually transform discrete features into continuous or vice versa:
+- Use GBDT to convert continuous features to binary ones, and feed binary features to FM.
+- Use FM/DNN to convert discrete features to embeddings or interactions, and feed these features to GBDT.-->
 
-However, our recent experiments and analysis shows that,
-training categorical data with simple MLP is difficult.
-For this reason, we propose product-nets as the author's first attempt of building new DNN architecture on this field. 
-This paper has been accepted by ICM2016, 
-and we will release an extended version very soon. 
-
-Discussion about features, models, and training are welcomed,
-please contact [Yanru Qu](http://apex.sjtu.edu.cn/members/kevinqu@apexlab.org).
+In order to solve these issues, we propose to use product operators in DNN to help explore feature interactions. We discuss these issues in an extended paper, which is submitted to TOIS at Seq. 2017 and will be released later.
+Any discussion is welcomed, please contact [Yanru Qu](http://apex.sjtu.edu.cn/members/kevinqu@apexlab.org).
 
 ## Product-based Neural Networks
 
-MLP is regarded to have universal approximation property.
-However, it is still very hard for an MLP to learn categorical data with limited resources.
-Thus we integrate latent vector learning (embedding) in MF to represent categorical features in low-dimensional, continuous space.
-And we propose product layers to capture feature interaction from feature embeddings.
+Through discussion of previous works, we think a good predictor should have a good feature extractor (to convert sparse features into dense representations) as well as a powerful classifier (e.g., DNN as universal approximator). Since FM is good at represent feature interactions, we introduce product operators in DNN. The proposed PNN models follow this architecture: an embedding layer to represent sparse features, a product layer to explore feature interactions, and a DNN classifier.
 
-For product layer, we propose inner product and outer product layers.
-Earlier in this paper, we propose some tricks to deal with complexity 
-(reducing from quadratic to linear).
-Even though these tricks make training more efficient, they do restrict model capacity.
-This is performance & efficiency trade-off.
+For product layer, we propose 2 types of product operators in the paper: inner product and outer product. These operators output $n(n-1)/2$ feature interactions, which are concatenated with embeddings and fed to the following fully conncted layers.
 
-In recent update of the code, we remove the trick in inner-pnn for better performance. 
-However in outer-pnn, removing the trick obviously slows down training, thus we still use the compact form outer-pnn.
+The inner product is easy to understand, the outer product is actually equivalent to projecting embeddings into a hidden space and computing the inner product of projected embeddings:
+
+$uv^T\odot w = u^Twv$
+
+Since there are $n(n-1)/2$ feature interactions, we propose some tricks to reduce complexity.
+However, we find these tricks restrict model capacity and are unecessary.
+In recent update of the code, we remove the tricks for better performance. 
+
+A potential risk may happen in training the first hidden layer. Feature embeddings and interactions are concatenated and fed to the first hidden layer, but the embeddings and interactions have different distribution. A simple method is adding linear transformation to the embeddings to balance the distributions. ``Layer norm`` is also worth to try.
 
 ## How to Use
 
@@ -89,37 +79,32 @@ iPinYou and Criteo. Movielens, Netflix, and Yahoo Music will be updated later.
 This code is originally written in python 2.7, numpy, scipy and tensorflow are required. 
 In recent update, we make it consistent with python 3.x. 
 Thus you can use it as a start-up with any python version you like.
-LR, FM, FNN, CCPM and PNN are all implemented in `models.py`, based on TensorFlow. 
+LR, FM, FNN, CCPM, DeepFM and PNN are all implemented in `models.py`, based on TensorFlow. 
 You can train any of the models in `main.py` and configure parameters via a dict.
 
 More models and mxnet implementation will be released in the extended version.
 
 ## Practical Issues
 
-In this section we select some discussions from my email to share.
+In this section we select some discussions from my emails and issues to share.
 
 ### 1. Sparse Regularization (L2)
 
 L2 is fundamental in controlling over-fitting.
 For sparse input, we suggest sparse regularization, 
 i.e. we only regularize on activated weights/neurons.
-
-Traditional L2 regularization penalizes all parameters ``w1, .., wn`` even though the input ``xi = 0``,
-which means every parameter will have non-zero gradients for every training example.
-This is neither reasonable nor efficient for sparse input, 
-because ``wi*xi = 0`` does not contribute to prediction. 
-
-Sparse regularization instead penalizes on non-zero terms, ``xw``. 
+Traditional L2 regularization penalizes all parameters $\Vert w\Vert$, $w = [w_1, \dots, w_n]$ even though some inputs are zero $x_i = 0$,
+which means every parameter $w_i$ will have a non-zero gradient for every training example $x$.
+Sparse regularization instead penalizes on non-zero terms, $\Vert xw \Vert$. 
 
 ### 2. Initialization
 
 Initializing weights with small random numbers is always promising in Deep Learning.
 Usually we use ``uniform`` or ``normal`` distribution around 0.
-An empirical choice is to set the distribution variance near ``sqrt(1/n)`` where n is the input dimension.
-
+An empirical choice is to set the distribution variance near $\sqrt{(1/n)}$ where n is the input dimension.
 Another choice is ``xavier``, for uniform distribution, 
-``xavier`` uses ``sqrt(3/node_in)``, ``sqrt(3/node_out)``, 
-or ``sqrt(6/(node_in+node_out))`` as the upper/lower bound. 
+``xavier`` uses $\sqrt{(3/node_i)}$, $\sqrt{(3/node_o)}$, 
+or $\sqrt{(6/(node_i+node_o))}$ as the upper/lower bound. 
 This is to keep unit variance among different layers.
 
 ### 3. Learning Rate
@@ -127,32 +112,25 @@ This is to keep unit variance among different layers.
 For deep neural networks with a lot of parameters, 
 large learning rate always causes divergence. 
 Usually sgd with small learning rate has promising performance, however converges slow.
-
 For extremely sparse input, adaptive learning rate converges much faster, 
 e.g. AdaGrad, Adam, FTRL, etc.
 [This blog](http://sebastianruder.com/optimizing-gradient-descent/) 
-compares most of adaptive algorithms, 
-and currently ``adam`` is an empirically good choice.
-
+compares most of adaptive algorithms.
 Even though adaptive algorithms speed up and sometimes jump out of local minimum, 
-there is no guarantee for better performance because they do not follow gradients' directions.
-Some experiments declare that ``adam``'s performance is slightly worse than SGD on some problems.
-And sometimes batch size also affect convergence.
+there is no guarantee for better generalization performance.
+To sum up, ``Adam`` and ``AdaGrad`` are good choices. ``Adam`` converges faster than ``AdaGrad``, but is also easier to overfit.
 
 ### 4. Data Processing
 
-Usually you need to build an index-map to convert categorical data into one-hot representation.
+Usually you need to build a feature map to convert categorical data into one-hot representation.
 These features usually follow a long-tailed distribution,
-resulting in extremely large feature space, e.g. IP. 
-
-A simple way is to drop those rarely appearing features by a threshold, 
+resulting in extremely large feature space, e.g. IP address. 
+A simple way is to remove those low frequency features by a threshold, 
 which will dramatically reduce the input dimension without much decrease of performance.
 
 For unbalance dataset, a typical positive/negative ratio is 0.1% - 1%, 
-and Facebook has published a paper discussing this problem. 
-Keeping pos and neg samples at similar level is a good choice, 
-this can be achieved by negative down-sampling.
-Negative down-sampling can speed up training, as well as reduce dimension.
+and Facebook has published a paper discussing negative down sampling. 
+Negative down-sampling can speed up training, as well as reduce dimension, but requires calibration in some cases.
 
 ### 5. Normalization
 
@@ -162,49 +140,23 @@ e.g. set the mean of one field to 0 and the variance to 1.
 Instance level is to keep consistent between difference records,
 e.g. you have a multi-value field, which has 5-100 values and the length varies. 
 You can set the magnitude to 1 by shifting and scaling.
-Whitening is not always possible, and normalization is just enough.
-
-Besides, ``batch/weight/layer normalization`` are worth to try when going deeper.
+Besides, ``batch/weight/layer normalization`` are worth to try when network grows deeper.
 
 ### 6. Continuous/Discrete/Multi-value Feature
 
-Most features in User Response Prediction have discrete values (categorical features). 
-The key difference between continuous and discrete features is, 
-discrete features only have absolute meanings (exists or not), 
-while continuous features have both absolute and relative meanings (higher or smaller). 
+Most features in User Response Prediction have discrete values (categorical features). The key difference between continuous and discrete features is, only continuous features are comparable in values. For example, {``male``: 0, ``female``: 1} and {``male``: 1, ``female``: 0} are equivalent.
 
-For example, {'male': 0, 'female': 1} and {'male': 1, 'female': 0} are equivalent, 
-while numbers 1, 2, 3 can not be arbitrarily encoded.
-
-When your data contains both continuous and discrete values, there arises another problem. 
-Simply put these features together results in your input neurons having different meanings.
-One solution is to discretize those continuous values using bucketing. 
-Taking 'age' as an example, you can set [0, 12] as 'children', [13, 18] as 'teenagers', [19, ~] as 'adults' as so on. 
+When the data contains both continuous and discrete values, one solution is to discretize those continuous values using bucketing. Taking 'age' as an example, you can set [0, 12] as ``children``, [13, 18] as ``teenagers``, [19, ~] as ``adults`` and so on. 
 
 Multi-value features are special cases of discrete features. 
-e.g. recently reviewed items = ['item2', 'item7', 'item11'], ['item1', 'item4', 'item9', 'item13']. 
-Suppose one user has reviewed 3 items, and another has reviewed 300 items, 
-matrix-multiplication operation will sum these items up and result in huge imbalance. 
-You may turn to data normalization to tackle this problem. 
-Till now, there is still not a standard representation for multi-value features, 
-and we are still working on it. 
+e.g. recently reviewed items = [``item2``, ``item7``, ``item11``], [``item1``, ``item4``, ``item9``, ``item13``]. 
+This type of data is also called set data, with one key property ``permutation invariance``, which is discussed in the paper ``DeepSet``.
 
-### 7. Embedding Strategy
+### 7. Activation Function
 
-In auto-encoder, we may use multi-layer non-linearity to produce low-dim representation, 
-however in NLP, embedding refers to single-layer linear projection. 
-Here gives some discussion:
-
-Suppose the embedding layer is followed by a fully connected layer. 
-The embedding can be represented by ``xw1``. 
-The fc layer can be represented by ``s(xw1) w2``.
-If ``s`` is some nonlinear activation, it can be viewed as two fc layers.
-If ``s`` is identity function, it is equivalent to ``xw1 w2 = xw3``.
-It seems that you are using ``w3`` as the embedding dimension followed by a nonlinear activation.
-The only difference is ``w1 w2`` is a low-rank representation of ``w3``, 
-but ``w3`` does not have this constraint.
-
-### 8. Activation Function
-
-Do not use ``sigmoid`` in hidden layers, use ``tanh`` or ``relu``.
+Do not use ``sigmoid`` in hidden layers, use ``tanh`` or ``relu`` instead.
 And recently ``selu`` is proposed to maintain fixed point in training.
+
+### 8. Numerical Stable Parameters
+
+Adaptive optimizers usually requires hyperparameters for numerical stability, e.g., $\epsilon$ in ``Adam``, ``initial value`` of ``AdaGrad``. Sometimes, these parameters have large impacts on model convergence and performance.
