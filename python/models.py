@@ -402,7 +402,7 @@ class PNN1(Model):
 class PNN2(Model):
     def __init__(self, field_sizes=None, embed_size=10, layer_sizes=None, layer_acts=None, drop_out=None,
                  embed_l2=None, layer_l2=None, init_path=None, opt_algo='gd', learning_rate=1e-2, random_seed=None,
-                 layer_norm=True):
+                 layer_norm=True, kernel_type='mat'):
         Model.__init__(self)
         init_vars = []
         num_inputs = len(field_sizes)
@@ -410,7 +410,12 @@ class PNN2(Model):
             init_vars.append(('embed_%d' % i, [field_sizes[i], embed_size], 'xavier', dtype))
         num_pairs = int(num_inputs * (num_inputs - 1) / 2)
         node_in = num_inputs * embed_size + num_pairs
-        init_vars.append(('kernel', [embed_size, num_pairs, embed_size], 'xavier', dtype))
+        if kernel_type == 'mat':
+            init_vars.append(('kernel', [embed_size, num_pairs, embed_size], 'xavier', dtype))
+        elif kernel_type == 'vec':
+            init_vars.append(('kernel', [num_pairs, embed_size], 'xavier', dtype))
+        elif kernel_type == 'num':
+            init_vars.append(('kernel', [num_pairs, 1], 'xavier', dtype))
         for i in range(len(layer_sizes)):
             init_vars.append(('w%d' % i, [node_in, layer_sizes[i]], 'xavier', dtype))
             init_vars.append(('b%d' % i, [layer_sizes[i]], 'zero',  dtype))
@@ -455,26 +460,31 @@ class PNN2(Model):
             p = tf.reshape(p, [-1, num_pairs, embed_size])
             # b * p * k
             q = tf.reshape(q, [-1, num_pairs, embed_size])
-            # k * p * k
             k = self.vars['kernel']
 
-            # batch * 1 * pair * k
-            p = tf.expand_dims(p, 1)
-            # batch * pair
-            kp = tf.reduce_sum(
-                # batch * pair * k
-                tf.multiply(
+            if kernel_type == 'mat':
+                # batch * 1 * pair * k
+                p = tf.expand_dims(p, 1)
+                # batch * pair
+                kp = tf.reduce_sum(
                     # batch * pair * k
-                    tf.transpose(
-                        # batch * k * pair
-                        tf.reduce_sum(
-                            # batch * k * pair * k
-                            tf.multiply(
-                                p, k),
-                            -1),
-                        [0, 2, 1]),
-                    q),
-                -1)
+                    tf.multiply(
+                        # batch * pair * k
+                        tf.transpose(
+                            # batch * k * pair
+                            tf.reduce_sum(
+                                # batch * k * pair * k
+                                tf.multiply(
+                                    p, k),
+                                -1),
+                            [0, 2, 1]),
+                        q),
+                    -1)
+            else:
+                # 1 * pair * (k or 1)
+                k = tf.expand_dims(k, 0)
+                # batch * pair
+                kp = tf.reduce_sum(p * q * k, -1)
 
             #
             # if layer_norm:

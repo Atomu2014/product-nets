@@ -52,6 +52,9 @@ Since there are $n(n-1)/2$ feature interactions, we propose some tricks to reduc
 However, we find these tricks restrict model capacity and are unecessary.
 In recent update of the code, we remove the tricks for better performance. 
 
+In our implementation, we add the parameter ``kernel_type: {mat, vec, num}`` for outer product.
+The default type is mat, and you can switch to other types to save time and memory.
+
 A potential risk may happen in training the first hidden layer. Feature embeddings and interactions are concatenated and fed to the first hidden layer, but the embeddings and interactions have different distribution. A simple method is adding linear transformation to the embeddings to balance the distributions. ``Layer norm`` is also worth to try.
 
 ## How to Use
@@ -73,8 +76,8 @@ As for dataset, we build a repository on github serving as a benchmark in our La
 This repository contains detailed data processing, feature engineering, 
 data storage/buffering/access and other implementations.
 For better I/O performance, this benchmark provides hdf5 APIs.
-Currently we provide download links of two large scale ad-click datasets (already processed), 
-iPinYou and Criteo. Movielens, Netflix, and Yahoo Music will be updated later.
+Currently we provide download links of 4 large scale ad-click datasets (already processed),
+Criteo-8day, Avazu, iPinYou-all, and Criteo Challenge. More datasets will be updated later.
 
 This code is originally written in python 2.7, numpy, scipy and tensorflow are required. 
 In recent update, we make it consistent with python 3.x. 
