@@ -7,6 +7,9 @@ This repository maintains the demo code of the paper
 and other baseline models, implemented with ``tensorflow``. 
 And this paper has been published on ICDM2016.
 
+``Note``: An extended version of the conference paper is at https://arxiv.org/abs/1807.00311 , which is accepted by TOIS.
+Compared with this simple demo, a more detailed implementation of the journal paper is at https://github.com/Atomu2014/product-nets-distributed , which has large-scale data access, multi-gpu support, and distributed training support.
+
 ## Introduction to User Response Prediction
 
 User response prediction takes a fundamental and crucial role in today's business, especially personalized recommender system and online display advertising. 
