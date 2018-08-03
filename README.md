@@ -1,14 +1,14 @@
 # Product-based Neural Networks for User Response Prediction
 
+``Note``: An extended version of the conference paper is https://arxiv.org/abs/1807.00311 , which is accepted by TOIS.
+Compared with this simple demo, a more detailed implementation of the journal paper is at https://github.com/Atomu2014/product-nets-distributed , which has large-scale data access, multi-gpu support, and distributed training support.
+
 ``Note``: Any problems, you can contact me at kevinqu@apex.sjtu.edu.cn, or kevinqu16@gmail.com. Through email, you will get my rapid response.
 
 This repository maintains the demo code of the paper 
 [Product-based Neural Network for User Response Prediction](https://arxiv.org/abs/1611.00144) 
 and other baseline models, implemented with ``tensorflow``. 
 And this paper has been published on ICDM2016.
-
-``Note``: An extended version of the conference paper is at https://arxiv.org/abs/1807.00311 , which is accepted by TOIS.
-Compared with this simple demo, a more detailed implementation of the journal paper is at https://github.com/Atomu2014/product-nets-distributed , which has large-scale data access, multi-gpu support, and distributed training support.
 
 ## Introduction to User Response Prediction
 
