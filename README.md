@@ -3,6 +3,8 @@
 ``Note``: An extended version of the conference paper is https://arxiv.org/abs/1807.00311 , which is accepted by TOIS.
 Compared with this simple demo, a more detailed implementation of the journal paper is at https://github.com/Atomu2014/product-nets-distributed , which has large-scale data access, multi-gpu support, and distributed training support.
 
+``Note``: I would like to share some intersting and advanced discussions in the [extended version](https://github.com/Atomu2014/product-nets-distributed).
+
 ``Note``: Any problems, you can contact me at kevinqu@apex.sjtu.edu.cn, or kevinqu16@gmail.com. Through email, you will get my rapid response.
 
 This repository maintains the demo code of the paper 
@@ -93,6 +95,8 @@ More models and mxnet implementation will be released in the extended version.
 ## Practical Issues
 
 In this section we select some discussions from my emails and issues to share.
+
+``Note``: 2 advanced discussions about overfitting of adam and performance gain of DNNs are presented in the [extended version](https://github.com/Atomu2014/product-nets-distributed). You are welcomed to discuss relavant problems through issues or emails.
 
 ### 1. Sparse Regularization (L2)
 
