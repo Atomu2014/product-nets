@@ -5,7 +5,7 @@ Compared with this simple demo, a more detailed implementation of the journal pa
 
 ``Note``: I would like to share some intersting and advanced discussions in the [extended version](https://github.com/Atomu2014/product-nets-distributed).
 
-``Note``: Any problems, you can contact me at kevinqu@apex.sjtu.edu.cn, or kevinqu16@gmail.com. Through email, you will get my rapid response.
+``Note``: Any problems, you can contact me at kevinqu16@gmail.com. Through email, you will get my rapid response.
 
 This repository maintains the demo code of the paper 
 [Product-based Neural Network for User Response Prediction](https://arxiv.org/abs/1611.00144) 
@@ -41,7 +41,7 @@ Take FM as an example, the gradient of each feature vector is the sum over other
 - Use FM/DNN to convert discrete features to embeddings or interactions, and feed these features to GBDT.-->
 
 In order to solve these issues, we propose to use product operators in DNN to help explore feature interactions. We discuss these issues in an extended paper, which is submitted to TOIS at Seq. 2017 and will be released later.
-Any discussion is welcomed, please contact [Yanru Qu](http://apex.sjtu.edu.cn/members/kevinqu@apexlab.org).
+Any discussion is welcomed, please contact kevinqu16@gmail.com.
 
 ## Product-based Neural Networks
 
